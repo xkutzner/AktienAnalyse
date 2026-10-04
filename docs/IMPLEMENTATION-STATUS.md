@@ -16,14 +16,14 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 08a | Volumen und präfixbasierter Handelswert-/Gap-/Downside-Audit | `c6c17b7` / `a704b67` · PR #8 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 13 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
 | 08b | Immutable Ereignisrevisionen und exaktes Tag20-Fenster; reale Unternehmensintegration offen | `9166ff8` / `c30dd2f` · PR #9 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 14 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt |
 
-Details: [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
+Details: [ANALYSIS-CARD.md](ANALYSIS-CARD.md), [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 09 | In Umsetzung, eigener neuer Agentkontext | Szenarien, Kein-Kauf-Regeln, Analysekarte |
+| 09 | Technisch implementiert, Prüfung und Merge ausstehend | Gemeinsame Analysekarte, unknown-/Kein-Kauf-Regeln; empirische Freigabe weiterhin gesperrt |
 | 10 | Wartet auf 09 | UI-Abnahme und echter Analyse-/Archiv-/Replay-Durchlauf |
 | 11 | Wartet auf 04–07 | Zeitlich getrennter Vergleich; qualifizierte Daten sind notwendig |
 | 12 | Wartet auf 08 und 11 | Drei Ergänzungsgruppen einzeln auf Mehrwert prüfen |

@@ -2,7 +2,7 @@ import {EVENT_VERSION, eventRevisionId, createEventRevision, readEventChain, pro
 import {CAPABILITY_VERSION, dataCapabilities} from "./capabilities.js";
 import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
 const SOURCE_COMMIT=__SOURCE_COMMIT__;
-import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
+import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, analysisCardPolicy, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
 import {riskAt, RISK_VERSION, createTradePlan, createEventWindow, lastCompleted,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
 import {simulateTrade, executionLabel, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
@@ -247,6 +247,7 @@ async function getResearch(url, env, replayDownloads=null) {
     return { ...stock.current, symbol: stock.symbol, close: stock.bars[currentIndex]?.close,
       risk: riskAt(stock.bars,currentIndex,{priceBasis:'adjusted',volumeBasis:'unknown',mic:stock.mic}), asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, analysisStatus:candidateStatus(forecast),resultType:'historical',expectedNetReturn:null,returnMetrics:{historicalStrategyMean:forecast.expectedReturn,stockAt20:null,strategyNet:null,capitalWindowNet:null}, historyBars: stock.bars.filter(Boolean).length };
   });
+  currentForecasts.forEach(stock=>{stock.rawTradePlan={status:'unknown',reason:'Adjusted Research ohne qualifizierte Rohpreise/PIT-Maßnahmen'};stock.analysisCard=analysisCardPolicy(stock)});
   currentForecasts.sort((a, b) =>
     (b.expectedReturn ?? -Infinity) - (a.expectedReturn ?? -Infinity) ||
     (b.probabilityTarget ?? -Infinity) - (a.probabilityTarget ?? -Infinity) ||
