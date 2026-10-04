@@ -19,6 +19,8 @@ export function simulateTrade(bars,decisionIndex,actions,options={}){
  const costs=validateCosts(options.costs),capital=options.capital??10000,horizon=options.horizon??20,target=.05;
  const broker=options.brokerProfile?BROKER_PROFILES[options.brokerProfile]:null;
  const blocked=reason=>({version:SIMULATION_VERSION,status:'blocked',reason,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],...(options.tradePlan?{tradePlan:options.tradePlan,plannedEndDate:options.tradePlan.plannedEndDate||null}: {})});
+ if(options.exitPolicy!==undefined&&!['target-or-time','time-only'].includes(options.exitPolicy))return blocked('Unbekannte Exitpolitik');
+ if(options.exitPolicy==='time-only'&&options.tradePlan)return blocked('Buy-and-hold akzeptiert keinen Stop-/Zielplan');
  if(options.tradePlan!==undefined&&options.tradePlan!==null&&(typeof options.tradePlan!=='object'||Array.isArray(options.tradePlan)))return blocked('Ungültiger Tradeplan');
  if((options.currency??'USD')!=='USD')return blocked('Historische FX- und passende Ausführungsdaten fehlen: keine Nettorendite in anderer Währung');
  if(options.priceBasis&&options.priceBasis!=='raw')return blocked('Bereinigte Kurse sind nur Feature-/Proxybasis, keine Rohpreisausführung');
@@ -61,8 +63,8 @@ export function simulateTrade(bars,decisionIndex,actions,options={}){
    const stop=plan?qty*entryPrice*(1-plan.stopFraction)/shares:null;
    const stopGap=stop!==null&&bar.open<=stop,stopTouch=stop!==null&&bar.low<=stop;
    const thesis=plan&&Array.isArray(options.thesisInvalidations)&&options.thesisInvalidations.some(event=>event.date===bar.date&&Number.isFinite(Date.parse(event.availableAt))&&Date.parse(event.availableAt)<=Date.parse(regularSessionOpenUtc(bar.date,plan.mic))&&event.phase==='before-open');
-   const openEligible=bar.open>=limit;
-   const bufferedTouch=bar.high*(1-(costs.exitSlippageBps+costs.exitSpreadBps)/10000)>=limit;
+   const openEligible=options.exitPolicy!=='time-only'&&bar.open>=limit;
+   const bufferedTouch=options.exitPolicy!=='time-only'&&bar.high*(1-(costs.exitSlippageBps+costs.exitSpreadBps)/10000)>=limit;
    if(bar.halted===true){
     if(i===last)return {...blocked('Handelsunterbrechung an Tag '+horizon+': rechtzeitiger Ausstieg nicht nachweisbar'),daily,partial:true};
     assumptions.push(bar.date+': Zielausführung wegen dokumentierter Unterbrechung nicht angenommen.');
@@ -84,7 +86,7 @@ export function simulateTrade(bars,decisionIndex,actions,options={}){
     exitIndex=i;
    }else{
     mae=Math.min(mae,shares*bar.low/(qty*entryPrice)-1);mfe=Math.max(mfe,shares*bar.high/(qty*entryPrice)-1);
-    if(bar.high>=limit)assumptions.push(bar.date+': Ziel nur berührt; Slippage-Puffer nicht erreicht, kein Limit-Fill modelliert.');
+    if(options.exitPolicy!=='time-only'&&bar.high>=limit)assumptions.push(bar.date+': Ziel nur berührt; Slippage-Puffer nicht erreicht, kein Limit-Fill modelliert.');
     if(i===last){exitReason='time-close';exitPrice=bar.close*(1-(costs.exitSlippageBps+costs.exitSpreadBps)/10000);mae=Math.min(mae,shares*exitPrice/(qty*entryPrice)-1);mfe=Math.max(mfe,shares*exitPrice/(qty*entryPrice)-1);exitIndex=i;}
    }
    if(exitIndex===i){

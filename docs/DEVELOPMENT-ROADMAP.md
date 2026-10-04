@@ -170,6 +170,8 @@ Eine verständliche Hauptansicht erstellen:
 
 ### 11 · Zeitlich getrennten Vergleich durchführen
 
+**Stand:** Technische Vorbereitung lokal umgesetzt; Review/Upload/Merge ausstehend. [COMPARISON-PREPARATION.md](COMPARISON-PREPARATION.md) und vollständige maschinenlesbare Sperrdatei trennen synthetische Softwareprüfung von blockierter realer Vergleichsabnahme. Qualifizierte historische Daten und spätere äußere Beobachtung fehlen; keine empirische Überlegenheit, keine Freigabe der abhängigen Pakete.
+
 **Priorität:** P0 vor Prognosefreigabe · **Abhängigkeit:** 04–07; 08 optional als Challenger · **Umfang:** groß
 
 - Training, Validierung und spätere Testblöcke strikt trennen; überlappende Ergebnisfenster an Grenzen entfernen.

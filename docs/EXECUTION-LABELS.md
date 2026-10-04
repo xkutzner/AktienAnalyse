@@ -24,3 +24,7 @@ Reale Kosten-/Labelabnahme bleibt offen: keine lokal verfügbare Providerberecht
 ## Ergänzung Paket07
 
 Der gemeinsame execution-v4-Kern akzeptiert optional trade-plan-v1 (siehe [TRADE-PLAN.md](TRADE-PLAN.md)); ohne Plan bleibt die Referenzausführung erhalten. Planversion/Parameter und Theseereignisse werden separat archiviert. Label und Simulation reichen denselben Plan an denselben Kern weiter. Spätere Dividendenbuchungen ändern die getrennte Spread-/Slippage-Zurechnung des bereits gebuchten Exits nicht.
+
+## Ergänzung Paket11
+
+Der gemeinsame execution-v4-Kern akzeptiert für den providerfreien Vergleich optional `exitPolicy: time-only` (keine Ziel-/Stop-/These-Politik, regulärer Horizon-Endschluss); ohne Parameter bleibt `target-or-time` unverändert. Unbekannte Politiken und Kombination von time-only mit Tradeplan werden gesperrt. `comparison-exit-policy-v1` versioniert die Vergleichsdefinitionen im Ergebnis. Details: [COMPARISON-PREPARATION.md](COMPARISON-PREPARATION.md). Dies ist keine neue Daten-/Prognosefreigabe.
