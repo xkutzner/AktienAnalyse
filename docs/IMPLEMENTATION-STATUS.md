@@ -10,14 +10,15 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 02 | MAE mit bekanntem Open; gemeinsamer Rohdatenadapter, Duplikatsperre | `1484678` / `8cbe210` · PR #2 | Abnahme −15 % bis −10 %, Duplikate, OHLC, Metadaten und Kalender; neun Testsuiten, Build, Artefakt |
 | 03 | Gemeinsamer Analysevertrag, USD-Szenario-Anlagebetrag, getrennte Renditebasis/Status | `9c87906` / `cf272e2` · PR #3 | Zehn Testsuiten, Build, Artefakt; API/UI-Vertrag und Betragsübertragung geprüft |
 
+| 04 | Manifest, immutable Archive/Replay, festes Raster und Prüfprotokoll | `19c77e2` / `c3e92a4` · PR #4 | Elf Testsuiten mit tatsächlichem Sourcecommit, bytegenaue Git-Prüfung, Build und Artefakt; Liveintegration offen |
+
 Details: [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 04 | Technisch implementiert, Review/Merge ausstehend | Manifest mit Buildcommit, unveränderliche Research-/Kostenszenarioarchive, Snapshotreplay, fixes Sitzungsraster und zukünftiges Prüfprotokoll; Liveintegration/PIT/Prognosegüte offen |
-| 05 | Als Nächstes nach Merge 04 | Quellen-/Datenfähigkeiten, getrennte Freigaben, prospektive Sammlung; tatsächlichen Zugang prüfen |
+| 05 | In Umsetzung, eigener neuer Agentkontext | Quellen-/Datenfähigkeiten, getrennte Freigaben, prospektive Sammlung; tatsächlichen Zugang prüfen |
 | 06 | Wartet auf 02–05 | Gemeinsamer Label-/Ausführungs-/Kostenpfad |
 | 07 | Wartet auf 06 | Einstieg, Stop, Ziel, Enddatum |
 | 08a | Wartet auf 05–07 | Handelbarkeit, Gap-/Downside-Risiko |
@@ -35,7 +36,7 @@ Details: [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V
 
 ## Grenzen des aktuellen Produkts
 
-- Archivierung/Replay sind technisch synthetisch geprüft; reale Provider-/Archivintegration und tatsächlicher Buildcommit müssen im Review/Livebetrieb bestätigt werden. Bestehende Experimente sind nicht rückwirkend vorregistriert.
+- Archivierung/Replay sind technisch synthetisch geprüft; der tatsächliche Quellcommit ist bytegenau geprüft und im finalen Testbuild eingebettet; reale Provider-/Archivintegration bleibt offen. Bestehende Experimente sind nicht rückwirkend vorregistriert.
 - Research bleibt experimentell auf heute abgerufener bereinigter Historie. Historische Veröffentlichungsstände und vollständige Kapitalmaßnahmenabdeckung fehlen.
 - Erwartete Nettorendite und separat definierte Tag-20-Aktienrendite sind weiterhin unbekannt, soweit kein belegter Ausführungspfad vorliegt.
 - Aktuelle Rangliste bleibt die bisherige Referenzmethode; keine Prognosefreigabe und kein geprüfter Kaufstatus.

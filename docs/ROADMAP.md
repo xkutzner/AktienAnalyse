@@ -2,7 +2,7 @@
 
 ## Paket 01 · umgesetzt
 
-Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02 und 03 sind ebenfalls umgesetzt; Pakete 04–18 bleiben offen.
+Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02–04 sind ebenfalls technisch umgesetzt und gemergt; Pakete 05–18 bleiben offen.
 
 - `selection-v2` entscheidet anhand des Datenpräfixes bis zum Entscheidungstag. Spätere Kurse werden erst für die Auswertung gelesen.
 - Fehlender späterer Einstiegskurs, ungültige spätere OHLC und fehlende spätere SPY-Sitzungen ändern keine damalige Auswahl. Unbekannte Outcomes bleiben `null`; kein Ersatzkandidat, kein nachträglicher Cash-Trade.
