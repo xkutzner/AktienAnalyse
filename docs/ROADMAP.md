@@ -2,7 +2,7 @@
 
 ## Paket 01 · umgesetzt
 
-Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Paket 02 ist ebenfalls umgesetzt; Pakete 03–18 bleiben offen.
+Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02 und 03 sind ebenfalls umgesetzt; Pakete 04–18 bleiben offen.
 
 - `selection-v2` entscheidet anhand des Datenpräfixes bis zum Entscheidungstag. Spätere Kurse werden erst für die Auswertung gelesen.
 - Fehlender späterer Einstiegskurs, ungültige spätere OHLC und fehlende spätere SPY-Sitzungen ändern keine damalige Auswahl. Unbekannte Outcomes bleiben `null`; kein Ersatzkandidat, kein nachträglicher Cash-Trade.
@@ -21,6 +21,17 @@ Ausgangspunkt: `main`, `eb21ca4c9fd52163e612765464815b61a1e1a102`.
 - Rohdatendefekte sperren die API-Simulation vor der Ausführung. Archivierte Szenarien verwenden ihren letzten abgeschlossenen Datentag als Ende; aktuelle Research-Freigabe bleibt streng auf den heutigen Datenstand bezogen.
 - Maßnahmenabdeckung und historische Verfügbarkeit werden nicht hochgestuft; Client-Overrides bleiben unwirksam. Referenz unverändert.
 - Alle neun Testsuiten, Build und Artefaktprüfung bestanden. Abnahme und Grenzen: [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md).
+
+## Paket 03 · umgesetzt
+
+Ausgangspunkt: `main`, `8cbe210ba2a32f5ef2432607fcd5772a0e40d65d` (Merge Paket 02).
+
+- `analysis-v1`: gemeinsamer Produktvertrag aus `worker/contract.js` für API und beim Build eingebettete Oberfläche.
+- Long-only, ungehebelt, unterstützte US-Aktien/Watchlist, USD; Entscheidung nach Tagesabschluss und bestätigter Verfügbarkeit; frühestens nächstes reguläres Open. Einstiegstag 1, letzter geplanter Ausstieg zum regulären Schluss von Tag 20.
+- Szenario-Anlagebetrag in USD sichtbar, editierbar, lokal gespeichert und an Simulation übermittelt; keine Depotverwaltung.
+- Aktienrendite am Tag 20, Strategieertrag beim Ausstieg und Kapitalrendite im ganzen Fenster getrennt. Historischer Referenzmittelwert bleibt Proxy ohne Kosten, erwartete Nettorendite unbekannt.
+- Vier verbindliche Ergebnisarten sowie getrennte Zustände für unbekannt, nicht geeignet, bewusst Cash und experimentell beobachten. Kein freigegebener geprüfter Kaufstatus.
+- Alle zehn Testsuiten, Build und Artefaktprüfung bestanden. Abnahme und Grenzen: [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 ## Produktziel
 Research für eine eingegebene US-Aktien-Watchlist und maximal 20 Handelstage. Einstieg nächstes reguläres Open, Einstiegstag=Tag1, +5 % Preisziel, Tag20-Close als Zeitausstieg, kein Stop-Loss. Kein gesicherter Profit, keine Netto-Kaufempfehlung, keine Orderausführung. Schrittweise Umsetzung; folgende Planung ist keine automatische Beauftragung.

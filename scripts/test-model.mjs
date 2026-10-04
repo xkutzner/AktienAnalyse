@@ -38,6 +38,10 @@ try {
   assert.equal(result.benchmark.symbol, "SPY");
   assert.equal(result.model.target, 0.05);
   assert.equal(result.model.horizon, 20);
+  assert.equal(result.contract.version,'analysis-v1');assert.equal(result.contract.horizon,20);
+  assert.equal(result.scenario.currency,'USD');assert.equal(result.scenario.capital,10000);
+  assert.equal(result.resultLabel,'Historischer Vergleich');assert.equal(result.expectedNetReturn,null);
+  assert.ok(result.stocks.every(stock=>stock.expectedNetReturn===null&&stock.returnMetrics.strategyNet===null&&stock.returnMetrics.stockAt20===null));
   assert.equal(result.comparisonModel.rankingChanged, false);
   assert.equal(result.comparisonModel.outOfSampleVerified, false);
   assert.ok(result.stocks.every(stock=>stock.newAnalogs.net.expectedNetReturn===null));

@@ -36,7 +36,8 @@ assert.equal(response.status,200);const denied=await response.json();assert.equa
 assert.equal((await worker.fetch(new Request('https://test.local/api/simulation'),env)).status,405);
 const html=await readFile(new URL('../app/index.html',import.meta.url),'utf8');
 const renderSource=html.slice(html.indexOf('    function renderSimulation('),html.indexOf("    async function refreshSimulation()"));
-const render=new Function('safe','pct','usd',renderSource+';return renderSimulation')(v=>String(v??''),v=>String(v),v=>String(v));
+const {ANALYSIS_CONTRACT}=await import('../worker/contract.js');
+const render=new Function('safe','pct','usd','currentScenarioCapital','UI_ANALYSIS_CONTRACT',renderSource+';return renderSimulation')(v=>String(v??''),v=>String(v),v=>String(v),()=>10000,ANALYSIS_CONTRACT);
 assert.ok(render(denied).includes('unbekannt'));
 const fixture=simulateTrade(make(),0,actions,{costs:zero});const output=render(fixture);assert.ok(output.includes('Brutto'));assert.ok(output.includes('Nettowert'));assert.ok(output.includes('Dividendenforderung'));assert.ok(output.includes('0020'));
 console.log('Server/UI checks passed: cost API, no qualification override, unknown results and daily valuation table.');

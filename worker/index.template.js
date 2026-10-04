@@ -1,3 +1,4 @@
+import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
 import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, DATA_VERSION } from "./data.js";
 import {simulateTrade, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
@@ -10,10 +11,13 @@ const MIN_ANALOGS = 12;
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if(url.pathname==="/api/contract")return request.method==="GET"?json(ANALYSIS_CONTRACT):json({message:"Nur GET erlaubt"},405);
     if (url.pathname === "/api/simulation") {
       if(request.method!=="POST")return json({message:"Nur POST erlaubt"},405);
       try {
-        const input=await request.json(),costs=validateCosts(input.costs||{});
+        const input=await request.json(),costs=validateCosts(input.costs||{}),capital=scenarioCapital(input.capital);
+        if((input.currency!==undefined&&input.currency!==ANALYSIS_CONTRACT.currency)||(input.horizon!==undefined&&input.horizon!==ANALYSIS_CONTRACT.horizon)||(input.side!==undefined&&input.side!=='long')||(input.leverage!==undefined&&input.leverage!==1))return json({message:'Analysevertrag unterstützt nur Long ohne Hebel, USD und 20 Handelstage'},400);
+        const context=analysisContext(capital,costs);
         if(!env.BUCKET)return json({message:"Datenarchiv nicht verfügbar"},503);
         const ids=[input.rawId,input.splitId,input.dividendId];
         if(ids.some(id=>!(/^[a-f0-9-]{36}$/).test(id)))return json({message:"Drei gültige Snapshot-IDs erforderlich"},400);
@@ -27,11 +31,11 @@ export default {
         // Adapter cannot assert historical vintages or full action coverage. No client override.
         const quality=adaptRawSnapshot(raw.payload);
         const {bars:normalized,sessionBars,...dataQuality}=quality;
-        if(!quality.usable)return json({version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
+        if(!quality.usable)return json({...context,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:'unknown',returnMetrics:{stockAt20:null,strategyNet:null,capitalWindowNet:null},version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
         const bars=sessionBars;
         const index=input.decisionDate?bars.findIndex(bar=>bar.date===input.decisionDate):Math.max(0,bars.length-21);
-        const result=simulateTrade(bars,index,actions,{costs,strict:true,brokerProfile:input.brokerProfile});
-        return json({...result,dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
+        const result=simulateTrade(bars,index,actions,{costs,capital,horizon:ANALYSIS_CONTRACT.horizon,strict:true,brokerProfile:input.brokerProfile});
+        return json({...context,...result,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:result.status==='blocked'?'unknown':'experimental',returnMetrics:simulationReturnMetrics(result,capital),dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
       } catch {return json({message:"Ungültige Eingabe oder Archiv nicht lesbar"},400)}
     }
     if (url.pathname === "/api/data") {
@@ -85,6 +89,9 @@ async function getResearch(url, env) {
     return json({ error: "invalid_symbols", message: "Bitte 1 bis 7 US-Aktien-Symbole eingeben. SPY wird als Marktvergleich automatisch geladen." }, 400);
   }
 
+  if((url.searchParams.has('currency')&&url.searchParams.get('currency')!=='USD')||(url.searchParams.has('horizon')&&url.searchParams.get('horizon')!=='20')||(url.searchParams.has('side')&&url.searchParams.get('side')!=='long')||(url.searchParams.has('leverage')&&url.searchParams.get('leverage')!=='1'))return json({message:'Analysevertrag unterstützt nur Long ohne Hebel, USD und 20 Handelstage'},400);
+  let context;
+  try{context=analysisContext(url.searchParams.has('capital')?Number(url.searchParams.get('capital')):undefined,DEFAULT_COSTS)}catch(error){return json({message:error.message},400)}
   const requested = [...symbols, "SPY"];
   const downloads = await Promise.all(requested.map((symbol) => fetchHistory(symbol, env)));
   const bySymbol = Object.fromEntries(downloads.filter((item) => item.bars).map((item) => [item.symbol, item]));
@@ -92,7 +99,7 @@ async function getResearch(url, env) {
   const backtest = historicalBacktest(downloads, symbols);
   const benchmark = bySymbol.SPY;
   if (!benchmark || !benchmark.quality?.usable || benchmark.bars.length < 100) {
-    return json({ error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
+    return json({ ...context,analysisStatus:"unknown",error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
   }
 
   // Expected exchange sessions form the spine: missing SPY rows must not compress time.
@@ -114,7 +121,7 @@ async function getResearch(url, env) {
     }
     series.push({ symbol, bars: aligned, current,qualityUsable:downloaded.quality?.usable });
   }
-  if (!series.length) return json({ provider: "Twelve Data", stocks: [], errors, backtest, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
+  if (!series.length) return json({ ...context,analysisStatus:"unknown",provider: "Twelve Data", stocks: [], errors, backtest, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
 
   const currentIndex = dates.length - 1;
   const records = Object.fromEntries(series.map((stock) => [stock.symbol, buildRecords(stock.bars, marketBars, marketFeatures)]));
@@ -125,7 +132,7 @@ async function getResearch(url, env) {
     const options={marketUp:marketFeatures[currentIndex]?.r20>=0};
     const newAnalogs={proxy:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'proxy'}),net:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'net'})};
     return { ...stock.current, symbol: stock.symbol, close: stock.bars[currentIndex]?.close,
-      asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, historyBars: stock.bars.filter(Boolean).length };
+      asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, analysisStatus:candidateStatus(forecast),resultType:'historical',expectedNetReturn:null,returnMetrics:{historicalStrategyMean:forecast.expectedReturn,stockAt20:null,strategyNet:null,capitalWindowNet:null}, historyBars: stock.bars.filter(Boolean).length };
   });
   currentForecasts.sort((a, b) =>
     (b.expectedReturn ?? -Infinity) - (a.expectedReturn ?? -Infinity) ||
@@ -134,6 +141,7 @@ async function getResearch(url, env) {
 
   const marketNow = marketFeatures[currentIndex] || {};
   return json({
+    ...context,analysisStatus:watchlistStatus(symbols.map(symbol=>currentForecasts.find(stock=>stock.symbol===symbol)||{analysisStatus:"unknown"})),
     provider: "Twelve Data",
     asOf: dates[currentIndex],
     benchmark: { symbol: "SPY", close: marketBars[currentIndex]?.close, r20: marketNow.r20, r60: marketNow.r60 },
@@ -144,7 +152,7 @@ async function getResearch(url, env) {
     best: currentForecasts.find((stock) => stock.qualityUsable && stock.sampleCount >= MIN_ANALOGS && stock.expectedReturn > 0) || null,
     backtest: {...backtest, validationStatus:"selection-v2-retrospective-only", pointInTimeVerified:false,
       warning:"Präfixbasierte Auswahl (selection-v2) auf heute abgerufener bereinigter Historie; keine belegte damalige Verfügbarkeit, keine handelbaren Rohkursausführungen. Nicht als validierter Backtest verwenden."},
-    automaticSimulation:{status:"blocked",reason:"Vollständige Kapitalmaßnahmen und historische Datenstände fehlen",costs:DEFAULT_COSTS,version:SIMULATION_VERSION,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],dayConvention:"Einstiegstag = Handelstag 1; maximal 20 Handelstage, kein Stop-Loss",automatic:true},
+    automaticSimulation:{status:"blocked",reason:"Vollständige Kapitalmaßnahmen und historische Datenstände fehlen",costs:DEFAULT_COSTS,version:SIMULATION_VERSION,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],dayConvention:"Einstiegstag = Handelstag 1; maximal 20 Handelstage, kein Stop-Loss",automatic:true,scenario:context.scenario,resultType:"costScenario",analysisStatus:"unknown"},
     executionModel:{version:SIMULATION_VERSION,horizon:20,target:0.05,entryDayCounts:true,noStopLoss:true,costs:DEFAULT_COSTS,costAssumptions:true},
     strictBacktest:{status:"blocked",reason:"Historische Veröffentlichungsstände und vollständige Kapitalmaßnahmenabdeckung fehlen"},
     dataVersion:DATA_VERSION,

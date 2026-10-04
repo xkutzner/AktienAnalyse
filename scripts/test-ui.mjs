@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const html=fs.readFileSync('app/index.html','utf8');
+const {renderPage}=await import('./render-page.mjs');
+const html=renderPage(fs.readFileSync('app/index.html','utf8'));
 const attrs=text=>Object.fromEntries([...text.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
 let active;
 class Node {
@@ -51,6 +52,14 @@ nodes['broker-mode'].value='custom';nodes.entryFeeBps.value=20;vm.runInContext('
 const blocked={status:'blocked',version:'execution-v2',reason:'NEUE ANNAHME',dayConvention:'Tag1',costs:{entryFeeBps:20,exitFeeBps:10,entryFixedFee:0,exitFixedFee:0,entrySlippageBps:5,exitSlippageBps:5}};
 await respond(newSim,blocked);await respond(oldSim,{...blocked,reason:'ALTE ANNAHME'});await simulation;assert.ok(nodes['simulation-output'].innerHTML.includes('NEUE ANNAHME'));assert.ok(!nodes['simulation-output'].innerHTML.includes('ALTE ANNAHME'));
 nodes['audit-symbol'].value='AAPL';const audit=nodes['audit-button'].fire('click'),oldAudit=requests.shift();nodes['audit-symbol'].value='NVDA';await nodes['audit-symbol'].fire('input');await respond(oldAudit,{symbol:'AAPL',archiveStatus:'saved'});await audit;assert.match(nodes['audit-output'].textContent,/Noch keine/);assert.equal(vm.runInContext('simulationSnapshots',context),null);
+// Scenario amount is forwarded and invalidation prevents stale cost results.
+vm.runInContext("simulationSnapshots={symbol:'AAPL',rawId:'raw',splitId:'split',dividendId:'div'}",context);
+nodes['scenario-capital'].value='2500.25';await nodes['scenario-capital'].fire('input');
+const capitalRequest=requests.shift();const sent=JSON.parse(capitalRequest.options.body);assert.equal(sent.capital,2500.25);assert.equal(sent.currency,'USD');assert.equal(sent.horizon,20);
+nodes['scenario-capital'].value='0';await nodes['scenario-capital'].fire('input');assert.match(nodes['simulation-output'].textContent,/Ungültiger Szenario/);
+await respond(capitalRequest,{...blocked,reason:'ALTER BETRAG',scenario:{capital:2500.25}});assert.ok(!nodes['simulation-output'].innerHTML.includes('ALTER BETRAG'));
+vm.runInContext('simulationSnapshots=null',context);nodes['scenario-capital'].value='10000';await nodes['scenario-capital'].fire('change');
+assert.match(nodes['analysis-contract-output'].innerHTML,/Aktienrendite am Tag 20/);assert.match(nodes['analysis-contract-output'].innerHTML,/Cash/);
 // Calendars are invalidated when watchlist changes, also if an old request resolves.
 const calendar=nodes['calendar-button'].fire('click'),oldCalendar=requests.shift();nodes.symbols.value='NVDA';await nodes.symbols.fire('input');await respond(oldCalendar,{events:[],risks:[],sources:[],checkedAt:'2026-10-04T12:00:00Z'});await calendar;assert.equal(vm.runInContext('calendarData',context),null);
 // Core text has no unverified historical-availability assertion or probability claim.
@@ -60,3 +69,4 @@ assert.ok(html.includes('@media(max-width:420px)')&&html.includes('@media(max-wi
 const luminance=hex=>{const rgb=hex.match(/[\da-f]{2}/g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]};
 for(const [fg,bg] of [['13212b','ffffff'],['4e606b','ffffff'],['005b73','ffffff'],['286437','ffffff'],['963c31','ffffff'],['bdf26e','101820'],['284858','f0f5f9'],['664600','fff4dc']]){const a=luminance(fg),b=luminance(bg);assert.ok((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,'text contrast '+fg)}
 console.log('UI workflows checked: three areas, shared quality display gate, stale research/cost/audit/calendar responses, loading/error/empty reset, keyboard tabs and text contrast. Responsive CSS checked structurally; no browser rendering claim.');
+
