@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const html=fs.readFileSync('app/index.html','utf8');
-const ids=['broker-comparison','broker-tariff','broker-mode','broker-name','broker-status','cost-summary','open-broker','tab-settings','cost-settings','entryFeeBps','exitFeeBps','entryFixedFee','exitFixedFee','entrySlippageBps','exitSlippageBps'];
+const ids=['broker-comparison','broker-tariff','broker-mode','broker-name','broker-status','cost-summary','open-broker','tab-settings','cost-settings','entryFeeBps','exitFeeBps','entryFixedFee','exitFixedFee','entrySlippageBps','exitSlippageBps','entrySpreadBps','exitSpreadBps'];
 const nodes=Object.fromEntries(ids.map(id=>[id,{value:id==='broker-mode'?'default':'',disabled:false,textContent:'',addEventListener(){},focus(){},checkValidity(){return this.value!==''&&Number(this.value)>=0&&(!id.endsWith('Bps')||Number(this.value)<=1000)}}]));
 let stored,refreshes=0;
 const context=vm.createContext({el:id=>nodes[id],localStorage:{getItem:()=>null,setItem:(key,value)=>stored=JSON.parse(value)},refreshSimulation:()=>refreshes++,activateTab(){},safe:v=>String(v),Number,JSON,Object});
@@ -25,8 +25,9 @@ assert.equal(brokerBaseFee('lynx-us',100,100),5);assert.equal(brokerBaseFee('lyn
 assert.throws(()=>brokerBaseFee('tr-best',100,100));
 assert.equal(simulateTrade([],0,{}, {brokerProfile:'tr-best'}).status,'blocked');
 const bars=Array.from({length:21},(_,i)=>({date:'2026-01-'+String(i+1).padStart(2,'0'),open:100,high:101,low:99,close:100}));
-const result=simulateTrade(bars,0,{coverageVerified:true,pointInTimeVerified:true,splits:[],dividends:[]},{brokerProfile:'ibkr-fixed',strict:false,costs:{entrySlippageBps:0,exitSlippageBps:0}});
+const result=simulateTrade(bars,0,{coverageVerified:true,pointInTimeVerified:true,splits:[],dividends:[]},{brokerProfile:'ibkr-fixed',strict:false,costs:{entrySlippageBps:0,exitSlippageBps:0,entryFeeBps:0,exitFeeBps:0}});
 assert.equal(result.ledger[0].shares,99);assert.equal(result.totalFees,2);assert.equal(result.netPnl,-2);assert.equal(result.daily[1].cash,99);
 assert.equal(simulateTrade(bars,0,{coverageVerified:true,pointInTimeVerified:true},{brokerProfile:'ibkr-fixed'}).status,'blocked');
 assert.deepEqual(JSON.parse(html.match(/const UI_BROKER_PROFILES=(.*);/)[1]),BROKER_PROFILES);
 console.log('Verified broker catalog: source consistency, per-share/minimum/cap, whole-share cash and strict historical tariff block.');
+
