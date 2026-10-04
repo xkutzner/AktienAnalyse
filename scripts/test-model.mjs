@@ -57,16 +57,24 @@ try {
   assert.equal(invalid.status, 400, "SPY is reserved as the market benchmark");
   // A fresh last bar does not override defects elsewhere in the accepted history.
   const validFetch=globalThis.fetch;
+  const baselinePair=await (await worker.fetch(new Request('https://test.local/api/stocks?symbols=AAPL,MSFT'),{TWELVEDATA_API_KEY:'test-secret'})).json();
+  const originalDecision=baselinePair.backtest.decisions[0];
+  const decisionState=row=>({date:row.decisionDate,universe:row.universe,candidates:row.candidates,symbol:row.symbol,expectedReturn:row.expectedReturn,expectedTargetProbability:row.expectedTargetProbability});
   globalThis.fetch=async url=>{const response=await validFetch(url);const payload=await response.json();if(new URL(url).searchParams.get('symbol')==='AAPL')payload.values.push({...payload.values[100]});return Response.json(payload)};
   const excluded=await (await worker.fetch(new Request('https://test.local/api/stocks?symbols=AAPL,MSFT'),{TWELVEDATA_API_KEY:'test-secret'})).json();
   assert.ok(!excluded.stocks.some(stock=>stock.symbol==='AAPL'));
   assert.ok(excluded.best?.symbol!=='AAPL');
-  assert.ok(excluded.backtest.recent.every(trade=>trade.symbol!=='AAPL'));
+  assert.equal(excluded.backtest.version,'selection-v2');
+  assert.deepEqual(decisionState(excluded.backtest.decisions[0]),decisionState(originalDecision),'future duplicate must not change earlier API decision');
+  assert.ok(excluded.backtest.decisions.some(row=>row.universe.includes('AAPL')),'later duplicate must not remove earlier historical membership');
   assert.equal(excluded.dataQuality.find(item=>item.symbol==='AAPL').quality.usable,false);
   assert.ok(excluded.errors.some(error=>error.symbol==='AAPL'));
   globalThis.fetch=async url=>{const response=await validFetch(url);const payload=await response.json();if(new URL(url).searchParams.get('symbol')==='SPY')payload.values[100].low='-1';return Response.json(payload)};
   const invalidBenchmark=await worker.fetch(new Request('https://test.local/api/stocks?symbols=MSFT'),{TWELVEDATA_API_KEY:'test-secret'});
   assert.equal(invalidBenchmark.status,502);
+  const blockedCurrent=await invalidBenchmark.json();
+  assert.ok(blockedCurrent.backtest.decisions.length,'historical decisions remain available while current SPY is blocked');
+  assert.ok(blockedCurrent.backtest.decisions[0].universe.includes('MSFT'),'later SPY defect must not remove earlier stock universe');
   console.log("Model checks passed: page syntax, secret handling, adjusted 1,300-bar history, analogue estimates, and walk-forward results.");
 } finally {
   globalThis.fetch = originalFetch;
@@ -99,3 +107,4 @@ function syntheticSeries(symbol, dates) {
     return { datetime, open: String(open), high: String(high), low: String(low), close: String(close) };
   });
 }
+
