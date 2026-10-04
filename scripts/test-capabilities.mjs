@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {dataCapabilities} from '../worker/capabilities.js';
+import {providerData,lastCompleted} from '../worker/data.js';
+import worker from '../worker/index.js';
+const missing=dataCapabilities();
+assert.equal(missing.sources[0].accessStatus,'not-checked');
+assert.deepEqual(Object.keys(missing.gates),['retrospectiveCostScenario','historicalModelValidation','empiricalForecastQuality']);
+assert.ok(Object.values(missing.gates).every(g=>g.status==='blocked'));
+const original=globalThis.fetch;let calls=0;
+globalThis.fetch=async()=>{calls++;throw Error('must not request without credentials')};
+assert.equal((await providerData('splits',{symbol:'AAPL'},{})).accessStatus,'not-checked');assert.equal(calls,0);
+const unknown=dataCapabilities([{provenance:{source:'Twelve Data /splits',parameters:{symbol:'AAPL'}},payload:{splits:[]},archived:true}]);
+assert.equal(unknown.sources[2].accessStatus,'observed');assert.equal(unknown.sources[2].coverageStatus,'unknown');assert.equal(unknown.actions.otherActions,'unknown');assert.ok(Object.values(unknown.gates).every(g=>g.status==='blocked'));
+const storage=new Map();let collision=false;
+const env={TWELVEDATA_API_KEY:'test',BUCKET:{async put(k,v,o){assert.equal(o.onlyIf.etagDoesNotMatch,'*');if(collision||storage.has(k))return null;storage.set(k,v);return {}},async get(k){return storage.has(k)?{text:async()=>storage.get(k)}:null}}};
+const post=body=>worker.fetch(new Request('https://test/api/collection',{method:'POST',body:JSON.stringify(body)}),env);
+try{
+ const noKey=await worker.fetch(new Request('https://test/api/collection',{method:'POST',body:'{"symbol":"AAPL"}'}),{BUCKET:env.BUCKET});assert.equal(noKey.status,503);assert.equal(storage.size,0);
+ assert.equal((await post({symbol:'../bad'})).status,400);
+ const last=lastCompleted(new Date(),'XNAS').date;
+ globalThis.fetch=async url=>{calls++;const path=new URL(url).pathname;return Response.json(path==='/splits'?{splits:[]}:path==='/dividends'?{dividends:[]}:{meta:{currency:'USD',mic_code:'XNAS',exchange_timezone:'America/New_York'},values:[{datetime:last,open:100,high:101,low:99,close:100}]})};
+ const response=await post({symbol:'AAPL'});assert.equal(response.status,201);const saved=await response.json();assert.equal(saved.snapshots.length,4);assert.equal(saved.historicalVintageStatus,'unknown');assert.equal(saved.decisionBeforeNextOpenStatus,'not-evaluated');assert.equal(saved.capabilities.sources[2].observations[0].rowCount,0);assert.equal(saved.capabilities.gates.retrospectiveCostScenario.status,'blocked');assert.equal(calls,4);
+ globalThis.fetch=async()=>{throw Error('read must use archive')};
+ const read=()=>worker.fetch(new Request('https://test/api/collection?id='+saved.collectionId),env);
+ assert.equal((await read()).status,200);
+ storage.set('snapshots/'+saved.snapshots[0].id+'.json','{}');assert.equal((await read()).status,409);
+ globalThis.fetch=async()=>Response.json({status:'error',code:429,message:'quota'}, {status:429});
+ const failure=await (await post({symbol:'AAPL'})).json();assert.equal(failure.capabilities.sources[0].accessStatus,'incomplete');assert.equal(failure.capabilities.sources[0].observations[0].qualityStatus,'not-checked');
+ collision=true;assert.equal((await post({symbol:'AAPL'})).status,409);
+}finally{globalThis.fetch=original}
+console.log('Capabilities: missing credentials, independent gates, unknown empty actions, immutable collection, integrity and provider failure passed');
+const {readFile}=await import('node:fs/promises');
+const html=await readFile(new URL('../app/index.html',import.meta.url),'utf8');
+assert.ok(html.includes('Drei getrennte Freigaben: Kostenszenario gesperrt'));
+assert.ok(!html.includes('Dividenden (je 20 API-Credits'));

@@ -1,3 +1,4 @@
+import {CAPABILITY_VERSION, dataCapabilities} from "./capabilities.js";
 import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
 const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
@@ -15,6 +16,34 @@ const worker = {
     const url = new URL(request.url);
     if(url.pathname==="/api/contract")return request.method==="GET"?json(ANALYSIS_CONTRACT):json({message:"Nur GET erlaubt"},405);
     if(url.pathname==='/api/protocol')return request.method==='GET'?json(EVALUATION_PROTOCOL):json({message:'Nur GET erlaubt'},405);
+    if(url.pathname==='/api/capabilities')return request.method==='GET'?json(dataCapabilities(),200,{'cache-control':'no-store'}):json({message:'Nur GET erlaubt'},405);
+    if(url.pathname==='/api/collection'){
+     if(!env.BUCKET)return json({status:'not-checked',message:'Archiv fehlt'},503);
+     if(request.method==='GET'){
+      const id=url.searchParams.get('id')||'';
+      if(!/^[a-f0-9-]{36}$/.test(id))return json({message:'Ungültige Sammlung-ID'},400);
+      try{
+       const object=await env.BUCKET.get('collections/'+id+'.json');if(!object)return json({message:'Sammlung fehlt'},404);
+       const record=JSON.parse(await object.text()),{recordHash,...body}=record;
+       if(await digest(body)!==recordHash)return json({message:'Sammlungsintegrität verletzt'},409);
+       for(const snapshot of record.snapshots){const saved=await env.BUCKET.get('snapshots/'+snapshot.id+'.json');if(!saved||await digest(JSON.parse(await saved.text()))!==snapshot.hash)return json({message:'Snapshotintegrität verletzt'},409)}
+       return json(record,200,{'cache-control':'no-store'});
+      }catch{return json({message:'Sammlung nicht lesbar'},409)}
+     }
+     if(request.method!=='POST')return json({message:'Nur GET/POST erlaubt'},405);
+     if(!env.TWELVEDATA_API_KEY)return json({status:'not-checked',message:'Credentials fehlen: Sammlung nicht gestartet',capabilities:dataCapabilities()},503);
+     try{
+      const input=await request.json(),symbol=String(input.symbol||'').toUpperCase();
+      if(!/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol))return json({message:'Ein gültiges Symbol erforderlich'},400);
+      const period={symbol,start_date:'2021-01-01',end_date:new Date().toISOString().slice(0,10)};
+      const records=await Promise.all([loadPrices(symbol,env,'all'),loadPrices(symbol,env,'none'),providerData('splits',period,env),providerData('dividends',{...period,adjust:false},env)]);
+      const snapshots=[];
+      for(const row of records){const stored=row.archived&&await env.BUCKET.get('snapshots/'+row.snapshotId+'.json');if(!stored)return json({status:'incomplete',message:'Nicht alle Abrufe archiviert',capabilities:dataCapabilities(records)},409);snapshots.push({id:row.snapshotId,hash:await digest(JSON.parse(await stored.text()))})}
+      const record={version:CAPABILITY_VERSION,collectionId:crypto.randomUUID(),recordedAt:new Date().toISOString(),sourceCommit:SOURCE_COMMIT,symbol,snapshots,capabilities:dataCapabilities(records),purpose:'prospective-retrieval-observation',historicalVintageStatus:'unknown',decisionBeforeNextOpenStatus:'not-evaluated'};
+      const saved=await env.BUCKET.put('collections/'+record.collectionId+'.json',JSON.stringify({...record,recordHash:await digest(record)}),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+      return saved===null?json({message:'Sammlung nicht gespeichert'},409):json(record,201,{'cache-control':'no-store'});
+     }catch{return json({status:'unknown',message:'Sammlung fehlgeschlagen'},400)}
+    }
     if(url.pathname==='/api/experiment'){
      if(!env.BUCKET)return json({status:'unknown',message:'Archiv fehlt'},503);
      if(request.method==='GET'){
@@ -92,7 +121,7 @@ const worker = {
         // Adapter cannot assert historical vintages or full action coverage. No client override.
         const normalizationAt=replayMode?.normalizationAt||new Date().toISOString();
         const quality=adaptRawSnapshot(raw.payload,new Date(normalizationAt));
-        const finishSimulation=async result=>json(replayMode?result:await saveAnalysis(result,url,records.map(record=>({symbol:record.provenance.parameters.symbol,snapshotId:record.snapshotId,provenance:record.provenance,archived:true,normalizationAt})),env,SOURCE_COMMIT,{kind:'simulation',request:input,normalizationAt}),200,{'cache-control':'no-store'});
+        const finishSimulation=async output=>{const result={...output,dataCapabilities:dataCapabilities(records.map(record=>({...record,archived:true})))};return json(replayMode?result:await saveAnalysis(result,url,records.map(record=>({symbol:record.provenance.parameters.symbol,snapshotId:record.snapshotId,provenance:record.provenance,archived:true,normalizationAt})),env,SOURCE_COMMIT,{kind:'simulation',request:input,normalizationAt}),200,{'cache-control':'no-store'});};
         const {bars:normalized,sessionBars,...dataQuality}=quality;
         if(!quality.usable)return finishSimulation({...context,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:'unknown',returnMetrics:{stockAt20:null,strategyNet:null,capitalWindowNet:null},version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
         const bars=sessionBars;
@@ -105,12 +134,12 @@ const worker = {
       if(request.method!=="GET") return json({message:"Nur GET erlaubt"},405);
       const symbol=(url.searchParams.get('symbol')||'').toUpperCase();
       if(!/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol))return json({message:"Ungültiges Symbol"},400);
-      if(!env.TWELVEDATA_API_KEY)return json({message:"Server-Schlüssel fehlt"},503);
+      if(!env.TWELVEDATA_API_KEY)return json({status:'not-checked',message:"Credentials fehlen: Zugang nicht geprüft",dataCapabilities:dataCapabilities()},503);
       // Separate explicit audit avoids silently multiplying watchlist requests/credits.
       const period={symbol,start_date:'2021-01-01',end_date:new Date().toISOString().slice(0,10)};
       const [indicators,execution,splits,dividends]=await Promise.all([loadPrices(symbol,env,'all'),loadPrices(symbol,env,'none'),providerData('splits',period,env),providerData('dividends',{...period,adjust:false},env)]);
       const actions=normalizeActions(splits,dividends);
-      return json({symbol,dataVersion:DATA_VERSION,indicators,execution,actions,sources:{splits,dividends},strictBacktest:{status:'blocked',reason:'Keine belegten historischen Veröffentlichungsstände und vollständigen Kapitalmaßnahmendaten'},archiveStatus:[indicators,execution,splits,dividends].every(r=>r.archived)?'saved':'unavailable'},200,{'cache-control':'no-store'});
+      return json({symbol,dataCapabilities:dataCapabilities([indicators,execution,splits,dividends]),dataVersion:DATA_VERSION,indicators,execution,actions,sources:{splits,dividends},strictBacktest:{status:'blocked',reason:'Keine belegten historischen Veröffentlichungsstände und vollständigen Kapitalmaßnahmendaten'},archiveStatus:[indicators,execution,splits,dividends].every(r=>r.archived)?'saved':'unavailable'},200,{'cache-control':'no-store'});
     }
     if (url.pathname === "/api/snapshot") {
       const id=url.searchParams.get('id')||'';
@@ -159,7 +188,7 @@ async function getResearch(url, env, replayDownloads=null) {
   try{context=analysisContext(url.searchParams.has('capital')?Number(url.searchParams.get('capital')):undefined,DEFAULT_COSTS)}catch(error){return json({message:error.message},400)}
   const requested = [...symbols, "SPY"];
   const downloads = replayDownloads || await Promise.all(requested.map((symbol) => fetchHistory(symbol, env)));
-  const finish=async (result,status=200)=>json(replayDownloads?result:await saveAnalysis(result,url,downloads,env,SOURCE_COMMIT),status,{"cache-control":"no-store"});
+  const finish=async (output,status=200)=>{const result={...output,dataCapabilities:dataCapabilities(downloads)};return json(replayDownloads?result:await saveAnalysis(result,url,downloads,env,SOURCE_COMMIT),status,{"cache-control":"no-store"});};
   const bySymbol = Object.fromEntries(downloads.filter((item) => item.bars).map((item) => [item.symbol, item]));
   const errors = downloads.filter((item) => item.error).map((item) => item.error);
   const backtest = historicalBacktest(downloads, symbols);

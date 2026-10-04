@@ -12,13 +12,13 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 
 | 04 | Manifest, immutable Archive/Replay, festes Raster und Prüfprotokoll | `19c77e2` / `c3e92a4` · PR #4 | Elf Testsuiten mit tatsächlichem Sourcecommit, bytegenaue Git-Prüfung, Build und Artefakt; Liveintegration offen |
 
-Details: [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
+Details: [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 05 | In Umsetzung, eigener neuer Agentkontext | Quellen-/Datenfähigkeiten, getrennte Freigaben, prospektive Sammlung; tatsächlichen Zugang prüfen |
+| 05 | Technisch umgesetzt; tatsächliche Datenabnahme offen | Quellenfähigkeiten, drei gesperrte Gates und explizite immutable Sammlung; echte Credentials/Archivintegration und Sammelstart nicht geprüft |
 | 06 | Wartet auf 02–05 | Gemeinsamer Label-/Ausführungs-/Kostenpfad |
 | 07 | Wartet auf 06 | Einstieg, Stop, Ziel, Enddatum |
 | 08a | Wartet auf 05–07 | Handelbarkeit, Gap-/Downside-Risiko |
