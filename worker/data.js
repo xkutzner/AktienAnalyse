@@ -71,6 +71,7 @@ export function validatePricePrefix(payload,adjust,decisionDate){
  return validatePrices({...payload,values:(payload.values||[]).filter(row=>String(row.datetime||'').slice(0,10)<=decisionDate)},adjust,new Date(decisionDate+'T23:00:00Z'));
 }
 export async function providerData(endpoint,parameters,env){
+ if(!env.TWELVEDATA_API_KEY)return {payload:null,error:'Credentials fehlen: Zugang nicht geprüft',accessStatus:'not-checked',snapshotId:null,archived:false,provenance:{source:'Twelve Data /'+endpoint,parameters,retrievedAt:null,publicationTime:null,availableAt:null,historicalVintage:null,httpStatus:null,period:{from:parameters.start_date||null,to:parameters.end_date||null}}};
  const retrievedAt=new Date().toISOString(),url=new URL('https://api.twelvedata.com/'+endpoint);
  for(const [k,v] of Object.entries(parameters))url.searchParams.set(k,String(v));url.searchParams.set('apikey',env.TWELVEDATA_API_KEY);
  let payload=null,error=null,status=null;

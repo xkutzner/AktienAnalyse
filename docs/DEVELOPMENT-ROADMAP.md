@@ -80,6 +80,8 @@ Vorläufige Produktentscheidungen:
 
 ### 05 · Datenfähigkeiten prüfen und Freigaben trennen
 
+**Stand:** Technisch umgesetzt, echte Datenabnahme und prospektiver Sammelstart offen. Details: [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md). Drei unabhängige Freigaben bleiben gesperrt; fehlende lokale Credentials sind nicht geprüft.
+
 **Priorität:** P0 · **Abhängigkeit:** 03–04 · **Umfang:** mittel, zuzüglich möglicher Datenbeschaffung
 
 - Tatsächlichen Zugang zu Rohkursen, bereinigten Kursen, Splits, Dividenden, Kalendern und Archiv prüfen, soweit autorisierte Zugänge vorhanden sind.
