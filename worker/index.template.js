@@ -1,8 +1,9 @@
+import {EVENT_VERSION, eventRevisionId, createEventRevision, readEventChain, projectEvents} from "./events.js";
 import {CAPABILITY_VERSION, dataCapabilities} from "./capabilities.js";
 import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
 const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
-import {riskAt, RISK_VERSION, createTradePlan,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
+import {riskAt, RISK_VERSION, createTradePlan, createEventWindow, lastCompleted,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
 import {simulateTrade, executionLabel, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
@@ -101,6 +102,17 @@ const worker = {
        const result=await response.json(),hash=await digest(result);
        return json({status:hash===record.manifest.resultHash?'identical':'mismatch',analysisId:id,resultHash:hash,manifest:record.manifest,result},hash===record.manifest.resultHash?200:409,{'cache-control':'no-store'});
       }catch{return json({status:'unknown',message:'Archiv nicht lesbar'},409)}
+    }
+    if(url.pathname==='/api/events'){
+      if(!env.BUCKET)return json({message:'Ereignisarchiv fehlt',coverage:'unknown'},503);
+      if(!['GET','POST'].includes(request.method))return json({message:'Nur GET/POST erlaubt'},405);
+      try{
+       if(request.method==='GET')return json({version:EVENT_VERSION,revisions:await readEventChain(env.BUCKET,url.searchParams.get('id')),coverage:'unknown'},200,{'cache-control':'no-store'});
+       const input=await request.json(),previous=input.previousRevisionId?(await readEventChain(env.BUCKET,input.previousRevisionId)).at(-1):null;
+       const record=await createEventRevision(input,new Date().toISOString(),previous);
+       const saved=await env.BUCKET.put('events/'+record.revisionId+'.json',JSON.stringify(record),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+       return saved===null?json({message:'Revision nicht gespeichert'},409):json(record,201,{'cache-control':'no-store'});
+      }catch{return json({message:'Ungültiger Import oder Revisionsintegrität verletzt',coverage:'unknown'},400)}
     }
     if(url.pathname==='/api/tradeplan'){
       if(request.method!=='POST')return json({message:'Nur POST erlaubt'},405);
@@ -435,52 +447,46 @@ async function calendar(url,env){
  if(url.searchParams.has('symbols')===false)return json({message:'Symbole fehlen'},400);
  const symbols=[...new Set(url.searchParams.get('symbols').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean))];
  if(!symbols.length||symbols.length>7||symbols.some(s=>!/^[A-Z][A-Z0-9.-]{0,9}$/.test(s)))return json({message:'Bitte 1–7 gültige Symbole eingeben'},400);
- const start=new Date().toISOString().slice(0,10),end=new Date(Date.now()+35*86400000).toISOString().slice(0,10),events=[],sources=[];
+ const checkedAt=new Date().toISOString(),asOf=url.searchParams.get('asOf'),mic=url.searchParams.get('mic');
+ const decisionDate=asOf&&Number.isFinite(Date.parse(asOf))?lastCompleted(new Date(asOf),mic)?.date:null;
+ const window=createEventWindow({decisionDate,asOf,mic});
+ if(window.status==='unknown')return json({message:window.reason,coverage:'unknown'},400);
+ const {start,end}=window,events=[],sources=[];
+ const ids=(url.searchParams.get('registryIds')||'').split(',').filter(Boolean);
+ if(ids.length>20||ids.some(id=>!eventRevisionId(id)))return json({message:'Ungültige Registry-IDs'},400);
+ if(ids.length){
+  if(!env.BUCKET)return json({message:'Ereignisarchiv fehlt',coverage:'unknown'},503);
+  try{const chains=await Promise.all(ids.map(id=>readEventChain(env.BUCKET,id)));events.push(...projectEvents(chains.flat(),{asOf:window.asOf,start,end,symbols}))}catch{return json({message:'Ereignisintegrität verletzt',coverage:'unknown'},409)}
+ }
+ // End-of-stand-day exclusion is conservative, not verified historical availability.
+ const staticKnownAt='2026-10-05T00:00:00.000Z';
+ const staticAvailable=Date.parse(staticKnownAt)<=Date.parse(asOf);
+ const macroRecord=(event,knownAt)=>({...event,knownAt,observedAt:knownAt,confirmationStatus:'source-observation-unqualified',availabilityQualification:knownAt===staticKnownAt?'declared-stand-date-conservative-bound-not-PIT-evidence':'server-observed-live-not-historical-publication',sourceStandDate:knownAt===staticKnownAt?'2026-10-04':null,evidenceValidation:'calendar-parser-or-declared-static-stand; no-PIT-qualification'});
  const bls='https://www.bls.gov/schedule/news_release/bls.ics';
  try{
   const response=await fetch(bls,{signal:AbortSignal.timeout(4000)});if(!response.ok)throw Error('HTTP '+response.status);
-  const text=(await response.text()).replace(/\r?\n[ \t]/g,'');let parsed=0;
+  const text=(await response.text()).replace(/\r?\n[ \t]/g,''),observedAt=new Date().toISOString();let parsed=0;
   for(const block of text.split('BEGIN:VEVENT').slice(1)){
    const title=block.match(/(?:^|\n)SUMMARY:([^\r\n]+)/)?.[1],raw=block.match(/(?:^|\n)DTSTART[^:]*:(\d{8})(?:T(\d{6})(Z)?)?/);
    if(!title||!raw)continue;parsed++;
    const date=raw[1].slice(0,4)+'-'+raw[1].slice(4,6)+'-'+raw[1].slice(6,8);
    const points=/Consumer Price Index|Employment Situation/i.test(title)?35:/Producer Price Index|Employment Cost Index|Job Openings/i.test(title)?20:0;
-   if(points&&date>=start&&date<=end)events.push({date,title,symbol:null,points,source:bls,time:raw[2]?raw[2].slice(0,2)+':'+raw[2].slice(2,4)+(raw[3]?' UTC':' US Eastern'):'Unbekannt'});
+   if(points&&date>=start&&date<=end&&Date.parse(observedAt)<=Date.parse(asOf))events.push(macroRecord({date,title,symbol:null,points,source:bls,time:raw[2]?raw[2].slice(0,2)+':'+raw[2].slice(2,4)+(raw[3]?' UTC':' US Eastern'):'Unbekannt'},observedAt));
   }
-  if(!parsed)throw Error('Antwort enthält keine lesbaren Kalendertermine');sources.push({name:'BLS',ok:true,message:'Live abgerufen · Inflation und Arbeitsmarkt'});
+  if(!parsed)throw Error('Antwort enthält keine lesbaren Kalendertermine');sources.push({name:'BLS',ok:true,message:'Live abgerufen · Inflation und Arbeitsmarkt; nach Entscheidungszeit beobachtete Termine ausgeschlossen, PIT-Abdeckung unbekannt'});
  }catch(error){
  const fallback=[['2026-10-14','Consumer Price Index',35,'08:30'],['2026-10-15','Producer Price Index',20,'08:30'],['2026-10-30','Employment Cost Index',20,'08:30'],['2026-11-03','Job Openings and Labor Turnover Survey',20,'10:00'],['2026-11-06','Employment Situation',35,'08:30']];
- for(const [date,title,points,time] of fallback.filter(r=>r[0]>=start&&r[0]<=end))events.push({date,title:title+' · Ersatzdatenstand 04.10.2026',symbol:null,points,time:time+' US Eastern',source:'https://www.bls.gov/schedule/2026/'+date.slice(5,7)+'_sched.htm'});
+ for(const [date,title,points,time] of fallback.filter(r=>staticAvailable&&r[0]>=start&&r[0]<=end))events.push(macroRecord({date,title:title+' · Ersatzdatenstand 04.10.2026',symbol:null,points,time:time+' US Eastern',source:'https://www.bls.gov/schedule/2026/'+date.slice(5,7)+'_sched.htm'},staticKnownAt));
  const reason=error.name==='TimeoutError'?'Zeitlimit überschritten':/^HTTP \d+$/.test(error.message)?error.message:'Verbindung oder Kalenderformat fehlgeschlagen';
- sources.push({name:'BLS',ok:false,message:'Live-Abruf: '+reason+' · offiziell geprüfte Ersatztermine vom 04.10.2026, Abdeckung unvollständig'});
+ sources.push({name:'BLS',ok:false,message:'Live-Abruf: '+reason+' · deklarierte Ersatztermine vom 04.10.2026; Verfügbarkeit nicht PIT-belegt, Abdeckung unvollständig'});
  }
  const fed='https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm';
  const fresh=start<='2026-11-04';
- for(const date of ['2026-10-28','2026-12-09','2027-01-27','2027-03-17','2027-04-28','2027-06-09','2027-07-28','2027-09-15','2027-10-27','2027-12-08'].filter(d=>d>=start&&d<=end))events.push({date,title:'FOMC · letzter Sitzungstag',symbol:null,points:35,source:fed,time:'Uhrzeit nicht verifiziert'});
- sources.push({name:'Fed',ok:fresh,message:'Offizieller Terminstand 04.10.2026 · keine Live-Aktualisierung'+(fresh?'':' · veraltet, bitte Quelle prüfen')});
- try{
-  if(!env.TWELVEDATA_API_KEY)throw Error();
-  const endpoint=new URL('https://api.twelvedata.com/earnings_calendar');
-  for(const [k,v] of Object.entries({apikey:env.TWELVEDATA_API_KEY,start_date:start,end_date:end,country:'United States'}))endpoint.searchParams.set(k,v);
-  const response=await fetch(endpoint,{signal:AbortSignal.timeout(4000)});
-  const text=await response.text();let payload;
-  try{payload=JSON.parse(text)}catch{throw Error('format')}
-  if(!response.ok||payload.status==='error'){
-    const code=Number(payload.code)||response.status;
-    const message=String(payload.message||'');
-    throw Error(code===429?'limit':/plan|subscription|upgrade|permission|not available.*tier/i.test(message)?'plan':code===401||code===403?'auth':'provider-'+code);
-  }
-  if(!payload.earnings||typeof payload.earnings!=='object')throw Error('schema');
-  const rows=Object.entries(payload.earnings).flatMap(([date,items])=>Array.isArray(items)?items.map(item=>({...item,date})):[]);
-  for(const row of rows.filter(r=>symbols.includes(r.symbol)&&r.date>=start&&r.date<=end))events.push({date:row.date,title:row.symbol+' · Quartalszahlen (Providertermin)',symbol:row.symbol,points:60,source:'https://twelvedata.com/fundamentals',time:row.time||'Unbekannt'});
-  sources.push({name:'Twelve Data',ok:rows.length<1200,message:rows.length<1200?'Live abgerufen · Termine nicht durch Unternehmen bestätigt; kein Treffer garantiert keine Terminfreiheit':'Ergebnislimit erreicht · Abdeckung unvollständig'});
- }catch(error){
- const reasons={limit:'API-Kreditlimit erreicht',plan:'Endpunkt laut Anbieter im Tarif nicht freigeschaltet',auth:'API-Zugriff abgelehnt (Schlüssel oder Berechtigung)',format:'Anbieter lieferte keine lesbare JSON-Antwort',schema:'Anbieterantwort enthält keinen Earnings-Kalender'};
- const reason=error.name==='TimeoutError'?'Zeitlimit überschritten':reasons[error.message]||(/^provider-\d+$/.test(error.message)?'Anbieterfehler '+error.message.slice(9):'Verbindung fehlgeschlagen');
- sources.push({name:'Twelve Data',ok:false,message:reason+' · Quartalszahlen unbekannt. Endpunkt benötigt 40 Credits.'});
- }
- const complete=sources.every(s=>s.ok);events.sort((a,b)=>a.date.localeCompare(b.date));
+ for(const date of ['2026-10-28','2026-12-09','2027-01-27','2027-03-17','2027-04-28','2027-06-09','2027-07-28','2027-09-15','2027-10-27','2027-12-08'].filter(d=>staticAvailable&&d>=start&&d<=end))events.push(macroRecord({date,title:'FOMC · letzter Sitzungstag',symbol:null,points:35,source:fed,time:'Uhrzeit nicht verifiziert'},staticKnownAt));
+ sources.push({name:'Fed',ok:fresh,message:'Deklarierter Quellenstand 04.10.2026 · Verfügbarkeit nicht PIT-belegt · keine Live-Aktualisierung'+(fresh?'':' · veraltet, bitte Quelle prüfen')});
+ sources.push({name:'Unternehmensereignisse',ok:false,message:'Quartalszahlen und Kapitalmaßnahmen: bestätigte Abdeckung unbekannt. Keine qualifizierte Unternehmensquelle integriert; Providerkalender nicht abgerufen. Importe bleiben claimed-unverified.'});
+ const complete=false;events.sort((a,b)=>a.date.localeCompare(b.date));
  const risks=symbols.map(symbol=>{const relevant=events.filter(e=>!e.symbol||e.symbol===symbol),points=Math.min(100,relevant.reduce((n,e)=>n+e.points,0));return{symbol,score:complete?points:null,knownPoints:points,label:complete?(points>=60?'Hoch':points>=30?'Erhöht':'Niedrig'):'Unbekannt / unvollständig'};});
- return json({start,end,checkedAt:new Date().toISOString(),events,sources,risks},200,{'cache-control':'private, max-age=3600'});
+ return json({version:EVENT_VERSION,start,end,checkedAt,window,events,sources,risks,coverage:{earnings:'unknown',capitalActions:'unknown',macro:'partial-observations'},thresholdStatus:'experimental-until-package12',registryIds:ids},200,{'cache-control':'no-store'});
 }
 
