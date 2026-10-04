@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+worker/index.js
+.env
+.env.*
+.sites-runtime/
+*.bundle

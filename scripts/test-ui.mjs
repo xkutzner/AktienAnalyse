@@ -1,0 +1,62 @@
+// Full inline-script workflow harness. Explicit synthetic fixtures; no market/provider calls.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const html=fs.readFileSync('app/index.html','utf8');
+const attrs=text=>Object.fromEntries([...text.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
+let active;
+class Node {
+ constructor(tag,a={}){this.tag=tag;this.attrs=a;this.id=a.id;this.value=a.value||'';this.listeners={};this.style={};this.disabled=false;this.hidden=false;this._text='';this._html='';this.open=false;this.classList={add(){},remove(){}};this.dataset={};}
+ set textContent(t){this._text=String(t);this._html=''} get textContent(){return this._text}
+ set innerHTML(t){this._html=String(t);this._text='';if(this.tag==='select'){const options=[...this._html.matchAll(/<option(?: value="([^"]*)")?[^>]*>([^<]*)/g)].map(m=>m[1]??m[2]);if(!options.includes(this.value))this.value=options[0]||''}}
+ get innerHTML(){return this._html||this._text}
+ addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)}
+ async fire(type,e={}){for(const fn of this.listeners[type]||[])await fn({target:this,preventDefault(){},...e})}
+ focus(){active=this}
+ setAttribute(k,v){this.attrs[k]=String(v)} getAttribute(k){return this.attrs[k]}
+ checkValidity(){if(this.tag!=='input'||this.attrs.type!=='number')return true;const v=Number(this.value);return this.value!==''&&Number.isFinite(v)&&v>=Number(this.attrs.min||0)&&(!this.attrs.max||v<=Number(this.attrs.max))}
+ querySelectorAll(selector){const key=selector==='[data-remove]'?'remove':selector==='[data-detail]'?'detail':null;if(!key)return [];return [...this.innerHTML.matchAll(new RegExp('<button[^>]*data-'+key+'="([^"]+)"[^>]*>','g'))].map(m=>{const node=new Node('button');node.dataset[key]=m[1];return node})}
+ querySelector(){return new Node('summary')}
+}
+const nodes={};for(const m of html.matchAll(/<([a-z][\w-]*)\b([^>]*\bid="[^>]+)>/g)){const a=attrs(m[2]);assert.ok(!nodes[a.id],'unique id '+a.id);nodes[a.id]=new Node(m[1],a)}
+const tabs=['tab-analysis','tab-details','tab-settings'].map(id=>nodes[id]);
+const requests=[];const fetch=(url,options={})=>new Promise(resolve=>requests.push({url,options,resolve}));
+const context=vm.createContext({document:{getElementById:id=>{assert.ok(nodes[id],'DOM id '+id);return nodes[id]},querySelectorAll:s=>s==='[role="tab"]'?tabs:[]},localStorage:{getItem:()=>null,setItem(){}},fetch,AbortController,AbortSignal,Response,Number,JSON,Object,Array,Map,Set,Intl,Date,Math,Error,String,setTimeout:()=>1,clearTimeout(){}});
+vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
+assert.equal(vm.runInContext('pct(.02)',context),'+2,0 %');assert.equal(vm.runInContext('frequency(.6)',context),'60,0 %');assert.equal(vm.runInContext('pp(.02)',context),'+2,0 Prozentpunkte');
+const tick=()=>new Promise(r=>setImmediate(r));
+const respond=async(request,body,status=200)=>{request.resolve(Response.json(body,{status}));await tick();await tick()};
+const stock=symbol=>({symbol,asOf:'2026-10-02',qualityUsable:true,close:100,r20:.03,r60:.05,rel20:.02,trend50:.01,vol20:.25,marketR20:.01,score:60,expectedReturn:.02,sampleCount:20,probabilityTarget:.6,probabilityLow:.4,probabilityHigh:.8,p10:-.1,p90:.05,averageAdverseMove:-.08,newAnalogs:{proxy:{reason:'Keine belastbare Schätzung',caseCount:0},net:{reason:'historische Datenstände fehlen',expectedNetReturn:null}}});
+const quality=symbol=>({symbol,quality:{usable:true,lastSession:'2026-10-02',expectedLastSession:'2026-10-02',issues:[]},provenance:{},archived:false});
+const fixture=(symbols=['AAPL','MSFT'])=>({stocks:symbols.map(stock),best:stock(symbols[0]),asOf:'2026-10-02',benchmark:{r20:.01},dataQuality:[...symbols,'SPY'].map(quality),backtest:{tradeCount:15,windows:20,sufficientSample:true,hitRate:.6,averageTradeReturn:.02,averageBenchmarkReturn:.01,excessPerWindow:.01,maxDrawdown:-.1,recent:[]},errors:[]});
+assert.equal(nodes['load-button'].disabled,true);assert.match(nodes.empty.textContent,/läuft/);
+await respond(requests.shift(),fixture());assert.match(nodes['candidate-cards'].innerHTML,/AAPL/);assert.match(nodes['best-title'].textContent,/Watchlist/);assert.match(nodes['bt-note'].textContent,/nicht belegt/);
+// Same quality gate in cards, table, best and details: inconsistent server payload is refused.
+const bad=fixture(['AAPL','MSFT']);bad.dataQuality[0].quality.usable=false;context.next=bad;
+const load=vm.runInContext('loadResearch()',context);await respond(requests.shift(),bad);await load;
+assert.ok(!nodes['candidate-cards'].innerHTML.includes('AAPL'));assert.ok(!nodes.stocks.innerHTML.includes('AAPL'));assert.ok(!nodes['detail-symbol'].innerHTML.includes('AAPL'));assert.ok(!nodes['best-title'].textContent.includes('AAPL'));
+// Older response deliberately ignores the AbortSignal; request version must still protect the UI.
+nodes.symbols.value='AAPL';const first=vm.runInContext('loadResearch()',context),old=requests.shift();
+nodes.symbols.value='MSFT';await nodes.symbols.fire('input');assert.equal(nodes['best-return'].textContent,'—');assert.equal(nodes['bt-return'].textContent,'—');assert.equal(nodes['market-status'].textContent,'Unbekannt');
+const second=vm.runInContext('loadResearch()',context),fresh=requests.shift();await respond(fresh,fixture(['MSFT']));await second;await respond(old,fixture(['AAPL']));await first;assert.ok(nodes['candidate-cards'].innerHTML.includes('MSFT'));assert.ok(!nodes['candidate-cards'].innerHTML.includes('AAPL'));
+// Keyboard navigation and roving tab focus.
+await tabs[0].fire('keydown',{key:'ArrowRight'});assert.equal(active.id,'tab-details');assert.equal(nodes['view-analysis'].hidden,true);assert.equal(nodes['view-details'].hidden,false);await tabs[1].fire('keydown',{key:'End'});assert.equal(active.id,'tab-settings');await tabs[2].fire('keydown',{key:'Home'});assert.equal(active.id,'tab-analysis');
+// Network / HTTP errors clear prior benchmark, best and backtest.
+const failure=vm.runInContext('loadResearch()',context);await respond(requests.shift(),{message:'Quelle nicht erreichbar'},503);await failure;assert.equal(nodes['best-return'].textContent,'—');assert.equal(nodes['bt-return'].textContent,'—');assert.equal(nodes['benchmark'].textContent,'SPY nicht verfügbar');assert.match(nodes['banner-text'].textContent,/Quelle/);
+const empty=vm.runInContext('loadResearch()',context);await respond(requests.shift(),{stocks:[],dataQuality:[],errors:[]});await empty;assert.match(nodes.empty.textContent,/Keine Aktie/);
+// Cost and audit races must not restore a prior scenario or wrong-symbol snapshot.
+vm.runInContext("simulationSnapshots={symbol:'AAPL',rawId:'raw',splitId:'split',dividendId:'div'}",context);
+const simulation=vm.runInContext('refreshSimulation()',context),oldSim=requests.shift();
+nodes['broker-mode'].value='custom';nodes.entryFeeBps.value=20;vm.runInContext('updateCostProfile()',context);const newSim=requests.shift();
+const blocked={status:'blocked',version:'execution-v2',reason:'NEUE ANNAHME',dayConvention:'Tag1',costs:{entryFeeBps:20,exitFeeBps:10,entryFixedFee:0,exitFixedFee:0,entrySlippageBps:5,exitSlippageBps:5}};
+await respond(newSim,blocked);await respond(oldSim,{...blocked,reason:'ALTE ANNAHME'});await simulation;assert.ok(nodes['simulation-output'].innerHTML.includes('NEUE ANNAHME'));assert.ok(!nodes['simulation-output'].innerHTML.includes('ALTE ANNAHME'));
+nodes['audit-symbol'].value='AAPL';const audit=nodes['audit-button'].fire('click'),oldAudit=requests.shift();nodes['audit-symbol'].value='NVDA';await nodes['audit-symbol'].fire('input');await respond(oldAudit,{symbol:'AAPL',archiveStatus:'saved'});await audit;assert.match(nodes['audit-output'].textContent,/Noch keine/);assert.equal(vm.runInContext('simulationSnapshots',context),null);
+// Calendars are invalidated when watchlist changes, also if an old request resolves.
+const calendar=nodes['calendar-button'].fire('click'),oldCalendar=requests.shift();nodes.symbols.value='NVDA';await nodes.symbols.fire('input');await respond(oldCalendar,{events:[],risks:[],sources:[],checkedAt:'2026-10-04T12:00:00Z'});await calendar;assert.equal(vm.runInContext('calendarData',context),null);
+// Core text has no unverified historical-availability assertion or probability claim.
+assert.ok(!html.includes('Nur bis zum jeweiligen Tag bekannte Daten'));assert.ok(!html.includes('Historische Chance auf'));assert.match(html,/Historischer Vergleich · ohne Kosten/);assert.match(html,/Experimentelle Schätzung/);
+assert.equal([...html.split('<script>')[0].matchAll(/role="tab"/g)].length,3);
+assert.ok(html.includes('@media(max-width:420px)')&&html.includes('@media(max-width:780px)'));assert.ok(html.includes('min-height:44px'));
+const luminance=hex=>{const rgb=hex.match(/[\da-f]{2}/g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]};
+for(const [fg,bg] of [['13212b','ffffff'],['4e606b','ffffff'],['005b73','ffffff'],['286437','ffffff'],['963c31','ffffff'],['bdf26e','101820'],['284858','f0f5f9'],['664600','fff4dc']]){const a=luminance(fg),b=luminance(bg);assert.ok((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,'text contrast '+fg)}
+console.log('UI workflows checked: three areas, shared quality display gate, stale research/cost/audit/calendar responses, loading/error/empty reset, keyboard tabs and text contrast. Responsive CSS checked structurally; no browser rendering claim.');

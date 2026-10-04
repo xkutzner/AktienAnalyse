@@ -1,0 +1,54 @@
+{
+  "version": "reference-v1",
+  "sourceCommit": "c58cef8f5b7c08c0e35bda2871e18abe4cb738af",
+  "horizonTradingSessions": 20,
+  "target": 0.05,
+  "historyBars": 1300,
+  "minAnalogs": 12,
+  "maxAnalogs": 30,
+  "recordStartIndex": 80,
+  "recordStep": 20,
+  "testMinIndex": 260,
+  "testLookback": 504,
+  "annualization": 252,
+  "wilsonZ": 1.96,
+  "weights": {
+    "r20": 0.25,
+    "r60": 0.2,
+    "rel20": 0.25,
+    "trend50": 0.2,
+    "vol20": 0.1
+  },
+  "sensitivities": {
+    "r20": 300,
+    "r60": 150,
+    "rel20": 300,
+    "trend50": 250,
+    "volatilityPenalty": 80
+  },
+  "scaleIntercept": 50,
+  "scoreClamp": [
+    0,
+    100
+  ],
+  "regime": "SPY r20 >= 0; fallback all matured if same regime < 12",
+  "distance": "absolute scalar score distance, no cutoff",
+  "entry": "next session open",
+  "exit": "target touch at daily high => exactly +5%, otherwise day20 close",
+  "stopLoss": null,
+  "costsIncluded": false,
+  "defaultWatchlist": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "GOOGL"
+  ],
+  "provider": "Twelve Data /time_series",
+  "request": {
+    "interval": "1day",
+    "outputsize": 1300,
+    "adjust": "all"
+  },
+  "coreSha256": "7aedd354176047d124df8ec12091bc1d9920f71459b0ebc3e7b6ba763640ed57"
+}

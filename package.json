@@ -1,0 +1,10 @@
+{
+  "name": "sites-worker-esm-starter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/render-worker.mjs && bash scripts/build.sh",
+    "validate": "node scripts/validate-artifact.mjs",
+    "test": "node scripts/render-worker.mjs && node scripts/test-model.mjs && node scripts/test-calendar.mjs && node scripts/test-reference.mjs && node scripts/test-data.mjs && node scripts/test-simulation.mjs && node scripts/test-analogues.mjs && node scripts/test-broker.mjs && node scripts/test-ui.mjs"
+  }
+}

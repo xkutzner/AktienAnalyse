@@ -1,0 +1,152 @@
+{
+  "features": {
+    "r20": -0.08467854539649267,
+    "r60": -0.02763645169343054,
+    "rel20": -0.04706538001161753,
+    "trend50": -0.054837830259531484,
+    "vol20": 0.020218732724865237,
+    "score": 41.38647066881333,
+    "marketR20": -0.037613165384875136,
+    "marketR60": 0.06631774915368438
+  },
+  "forecast": {
+    "sampleCount": 28,
+    "expectedReturn": -0.028881042008555975,
+    "probabilityTarget": 0.17857142857142858,
+    "probabilityLow": 0.0787838582943011,
+    "probabilityHigh": 0.355917915485911,
+    "p10": -0.11721813468509723,
+    "p90": 0.05,
+    "averageAdverseMove": -0.04727224013429526
+  },
+  "backtest": {
+    "method": "Walk-forward, nicht überlappende 20-Tage-Perioden",
+    "testFrom": "0797",
+    "testTo": "1277",
+    "windows": 25,
+    "tradeCount": 15,
+    "target": 0.05,
+    "averageReturnPerWindow": 0.007399999039028486,
+    "averageTradeReturn": 0.012333331731714144,
+    "hitRate": 0.4666666666666667,
+    "winRate": 0.6666666666666666,
+    "averageAdverseMove": -0.022114404131623206,
+    "averageBenchmarkReturn": -0.00527689076738469,
+    "excessPerWindow": 0.012676889806413176,
+    "maxDrawdown": -0.09590560855756236,
+    "minimumTrades": 12,
+    "sufficientSample": true,
+    "recent": [
+      {
+        "date": "1277",
+        "symbol": "SYNTHETIC",
+        "expectedReturn": 0.021867937662879477,
+        "expectedTargetProbability": 0.6333333333333333,
+        "realizedReturn": -0.07253565613024815,
+        "targetHit": false,
+        "averageAdverseMove": -0.07810044219346657,
+        "benchmarkReturn": -0.01284174798187343,
+        "benchmarkTargetHit": false
+      },
+      {
+        "date": "1257",
+        "symbol": "SYNTHETIC",
+        "expectedReturn": 0.01748683006105949,
+        "expectedTargetProbability": 0.6333333333333333,
+        "realizedReturn": 0.05,
+        "targetHit": true,
+        "averageAdverseMove": -0.006000000000000005,
+        "benchmarkReturn": 0.05,
+        "benchmarkTargetHit": true
+      },
+      {
+        "date": "1237",
+        "symbol": "SYNTHETIC",
+        "expectedReturn": 0.01636568627006154,
+        "expectedTargetProbability": 0.6206896551724138,
+        "realizedReturn": 0.02001540063628826,
+        "targetHit": false,
+        "averageAdverseMove": -0.006000000000000005,
+        "benchmarkReturn": 0.05,
+        "benchmarkTargetHit": true
+      },
+      {
+        "date": "1217",
+        "symbol": "SYNTHETIC",
+        "expectedReturn": 0.015164460779706594,
+        "expectedTargetProbability": 0.6071428571428571,
+        "realizedReturn": 0.05,
+        "targetHit": true,
+        "averageAdverseMove": -0.006000000000000005,
+        "benchmarkReturn": 0.05,
+        "benchmarkTargetHit": true
+      },
+      {
+        "date": "1197",
+        "symbol": "SYNTHETIC",
+        "expectedReturn": 0.015164460779706594,
+        "expectedTargetProbability": 0.6071428571428571,
+        "realizedReturn": 0.05,
+        "targetHit": true,
+        "averageAdverseMove": -0.006000000000000005,
+        "benchmarkReturn": 0.05,
+        "benchmarkTargetHit": true
+      },
+      {
+        "date": "1177",
+        "symbol": null,
+        "expectedReturn": null,
+        "expectedTargetProbability": null,
+        "realizedReturn": 0,
+        "targetHit": false,
+        "averageAdverseMove": 0,
+        "benchmarkReturn": 0.05,
+        "benchmarkTargetHit": true
+      },
+      {
+        "date": "1157",
+        "symbol": "SYNTHETIC",
+        "expectedReturn": 0.015164460779706594,
+        "expectedTargetProbability": 0.6071428571428571,
+        "realizedReturn": 0.03027618228257567,
+        "targetHit": false,
+        "averageAdverseMove": -0.014868178221544737,
+        "benchmarkReturn": -0.021968836166495365,
+        "benchmarkTargetHit": false
+      },
+      {
+        "date": "1137",
+        "symbol": null,
+        "expectedReturn": null,
+        "expectedTargetProbability": null,
+        "realizedReturn": 0,
+        "targetHit": false,
+        "averageAdverseMove": 0,
+        "benchmarkReturn": 0.004839116502150409,
+        "benchmarkTargetHit": false
+      },
+      {
+        "date": "1117",
+        "symbol": null,
+        "expectedReturn": null,
+        "expectedTargetProbability": null,
+        "realizedReturn": 0,
+        "targetHit": false,
+        "averageAdverseMove": 0,
+        "benchmarkReturn": -0.09981309929669202,
+        "benchmarkTargetHit": false
+      },
+      {
+        "date": "1097",
+        "symbol": null,
+        "expectedReturn": null,
+        "expectedTargetProbability": null,
+        "realizedReturn": 0,
+        "targetHit": false,
+        "averageAdverseMove": 0,
+        "benchmarkReturn": -0.06563203649255844,
+        "benchmarkTargetHit": false
+      }
+    ]
+  }
+}
