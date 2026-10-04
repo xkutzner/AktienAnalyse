@@ -9,8 +9,9 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 01 | Präfixbasierte historische Auswahl vor späterer Auswertung; unbekannte Outcomes separat | `b52c1fb` / `eb21ca4` · PR #1 | Neun Testsuiten, Build, Artefakt; eingefrorene Referenz unverändert |
 | 02 | MAE mit bekanntem Open; gemeinsamer Rohdatenadapter, Duplikatsperre | `1484678` / `8cbe210` · PR #2 | Abnahme −15 % bis −10 %, Duplikate, OHLC, Metadaten und Kalender; neun Testsuiten, Build, Artefakt |
 | 03 | Gemeinsamer Analysevertrag, USD-Szenario-Anlagebetrag, getrennte Renditebasis/Status | `9c87906` / `cf272e2` · PR #3 | Zehn Testsuiten, Build, Artefakt; API/UI-Vertrag und Betragsübertragung geprüft |
-
 | 04 | Manifest, immutable Archive/Replay, festes Raster und Prüfprotokoll | `19c77e2` / `c3e92a4` · PR #4 | Elf Testsuiten mit tatsächlichem Sourcecommit, bytegenaue Git-Prüfung, Build und Artefakt; Liveintegration offen |
+
+| 05 | Quellenfähigkeiten, unabhängige Gates und immutable Sammlung; Datenabnahme offen | `a23ba9e` / `a396b1e` · PR #5 | Zwölf Testsuiten mit tatsächlichem Sourcecommit, 14 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt |
 
 Details: [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
@@ -18,8 +19,7 @@ Details: [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPR
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 05 | Technisch umgesetzt; tatsächliche Datenabnahme offen | Quellenfähigkeiten, drei gesperrte Gates und explizite immutable Sammlung; echte Credentials/Archivintegration und Sammelstart nicht geprüft |
-| 06 | Wartet auf 02–05 | Gemeinsamer Label-/Ausführungs-/Kostenpfad |
+| 06 | In Umsetzung, eigener neuer Agentkontext | Gemeinsamer Label-/Ausführungs-/Kostenpfad |
 | 07 | Wartet auf 06 | Einstieg, Stop, Ziel, Enddatum |
 | 08a | Wartet auf 05–07 | Handelbarkeit, Gap-/Downside-Risiko |
 | 08b | Wartet auf 05–07 | Bestätigte Ereignisse, Verfügbarkeit und Änderungen |
