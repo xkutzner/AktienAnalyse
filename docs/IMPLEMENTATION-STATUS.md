@@ -14,6 +14,7 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 06 | Gemeinsamer execution-v4-Kern und execution-label-v1; getrennte Kosten und FX-Sperren | `28d51aa` / `2d45819` · PR #6 | Dreizehn Suiten mit tatsächlichem Sourcecommit, 20 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
 | 07 | Versionierter Einstieg, experimenteller Stop und festes Kalenderenddatum | `2820c4a` / `3c100d9` · PR #7 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 16 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Ausführungsabnahme offen |
 | 08a | Volumen und präfixbasierter Handelswert-/Gap-/Downside-Audit | `c6c17b7` / `a704b67` · PR #8 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 13 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
+| 08b | Immutable Ereignisrevisionen und exaktes Tag20-Fenster; reale Unternehmensintegration offen | `9166ff8` / `c30dd2f` · PR #9 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 14 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt |
 
 Details: [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
@@ -22,8 +23,7 @@ Details: [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURE
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 08b | Technisch lokal umgesetzt; Review/Upload/PR/Merge ausstehend | Quellengebundenes immutable Ereignisarchiv, unbekannte Unternehmensabdeckung, exaktes Tag20-Fenster; reale Integration blockiert |
-| 09 | Wartet auf 06–08 | Szenarien, Kein-Kauf-Regeln, Analysekarte |
+| 09 | In Umsetzung, eigener neuer Agentkontext | Szenarien, Kein-Kauf-Regeln, Analysekarte |
 | 10 | Wartet auf 09 | UI-Abnahme und echter Analyse-/Archiv-/Replay-Durchlauf |
 | 11 | Wartet auf 04–07 | Zeitlich getrennter Vergleich; qualifizierte Daten sind notwendig |
 | 12 | Wartet auf 08 und 11 | Drei Ergänzungsgruppen einzeln auf Mehrwert prüfen |
