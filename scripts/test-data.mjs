@@ -31,3 +31,20 @@ const reverse={...covered,splits:[{effectiveDate:'2026-10-02',shareFactor:.25}],
 const original=globalThis.fetch,store=new Map();globalThis.fetch=async()=>Response.json({meta,values:rows});
 try{const data=await providerData('time_series',{symbol:'SYNTHETIC',adjust:'none'},{TWELVEDATA_API_KEY:'fake-secret',BUCKET:{put:async(k,v)=>store.set(k,v)}});assert.equal(data.archived,true);assert.equal(data.provenance.publicationTime,null);assert.equal(data.provenance.pointInTimeVerified,false);assert.ok(![...store.values()][0].includes('fake-secret'));assert.equal(JSON.parse([...store.values()][0]).payload.values.length,3)}finally{globalThis.fetch=original}
 console.log('Data checks passed: holidays/early closes/DST, freshness, gaps/duplicates/OHLC, splits/reverse splits/dividends, PIT block and archival.');
+
+// Shared adapter: malformed duplicate rows must not evade duplicate detection.
+const {adaptRawSnapshot}=await import('../worker/data.js');
+const archivedMeta={mic_code:'XNAS',currency:'USD',exchange_timezone:'America/New_York'};
+const archivedRows=['2026-09-28','2026-09-29','2026-09-30'].map(datetime=>({datetime,open:'100',high:'104',low:'99',close:'100'}));
+const archivedNow=new Date('2026-10-02T23:00:00Z');
+for(const values of [archivedRows,[archivedRows[0],archivedRows[2]],[...archivedRows,{...archivedRows[1]}],[...archivedRows,{...archivedRows[1],low:'-1'}],[...archivedRows,{...archivedRows[1]},{...archivedRows[1]}]]){
+ const payload={meta:archivedMeta,values};
+ assert.deepEqual(adaptRawSnapshot(payload,archivedNow),validatePrices(payload,'none',new Date('2026-09-30T23:00:00Z')),'same normalization at same archive cutoff');
+}
+const triple=adaptRawSnapshot({meta:archivedMeta,values:[...archivedRows,archivedRows[1],archivedRows[1]]},archivedNow);
+assert.equal(triple.duplicates,2);assert.ok(!triple.bars.some(bar=>bar.date==='2026-09-29'));assert.equal(triple.sessionBars.find(bar=>bar.date==='2026-09-29').missing,true);
+const invalidFirst=adaptRawSnapshot({meta:archivedMeta,values:[{...archivedRows[0],low:'-1'},...archivedRows.slice(1)]},archivedNow);
+assert.equal(invalidFirst.sessionBars[0].date,'2026-09-28');assert.equal(invalidFirst.sessionBars[0].missing,true);assert.equal(invalidFirst.usable,false);
+const nonSession=adaptRawSnapshot({meta:archivedMeta,values:[...archivedRows,{...archivedRows[0],datetime:'2026-09-27'}]},archivedNow);assert.equal(nonSession.usable,false);
+const unfinished=adaptRawSnapshot({meta:archivedMeta,values:archivedRows},new Date('2026-09-30T14:00:00Z'));assert.equal(unfinished.lastSession,'2026-09-29');assert.equal(unfinished.excludedUnclosed,1);assert.ok(!unfinished.sessionBars.some(bar=>bar.date==='2026-09-30'));
+console.log('Shared price adapter checked: archive cutoff, duplicate poisoning, invalid first session, non-session and unclosed data.');

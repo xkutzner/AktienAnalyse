@@ -40,3 +40,35 @@ const render=new Function('safe','pct','usd',renderSource+';return renderSimulat
 assert.ok(render(denied).includes('unbekannt'));
 const fixture=simulateTrade(make(),0,actions,{costs:zero});const output=render(fixture);assert.ok(output.includes('Brutto'));assert.ok(output.includes('Nettowert'));assert.ok(output.includes('Dividendenforderung'));assert.ok(output.includes('0020'));
 console.log('Server/UI checks passed: cost API, no qualification override, unknown results and daily valuation table.');
+
+// Paket 02: known opening gap belongs to the upper MAE bound.
+bars=make();bars[2]={date:'0002',open:90,low:85,high:106,close:100};
+r=simulateTrade(bars,0,actions,{costs:zero});assert.equal(r.exitReason,'target-intraday-assumed');assert.equal(r.mae,null);approx(r.maeBounds[0],-.15);approx(r.maeBounds[1],-.10);
+// The same economic gap after a 4:1 split must have the same bounds.
+bars=make();bars[2]={date:'0002',open:22.5,low:21.25,high:26.5,close:25};
+r=simulateTrade(bars,0,{...actions,splits:[{effectiveDate:'0002',shareFactor:4}]},{costs:zero});approx(r.maeBounds[0],-.15);approx(r.maeBounds[1],-.10);
+bars=make();bars[1]={date:'0001',open:100,low:85,high:106,close:100};
+r=simulateTrade(bars,0,actions,{costs:zero});approx(r.maeBounds[0],-.15);approx(r.maeBounds[1],0);
+bars=make();bars[2]={date:'0002',open:106,low:85,high:110,close:100};
+r=simulateTrade(bars,0,actions,{costs:zero});assert.equal(r.exitReason,'target-open-gap');approx(r.maeBounds[0],-.01);approx(r.maeBounds[1],-.01);
+// Archived snapshots must pass the common raw adapter before action qualification.
+const rawMeta={mic_code:'XNAS',currency:'USD',exchange_timezone:'America/New_York'};
+const rawRows=['2026-09-28','2026-09-29','2026-09-30'].map(datetime=>({datetime,open:'100',high:'104',low:'99',close:'100'}));
+const requestSimulation=async payload=>{
+ records[0].payload=payload;
+ return (await worker.fetch(new Request('https://test.local/api/simulation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({rawId:ids[0],splitId:ids[1],dividendId:ids[2],costs:zero,strict:false,coverageVerified:true,pointInTimeVerified:true})}),env)).json();
+};
+const qualifiedPrices=await requestSimulation({meta:rawMeta,values:rawRows});
+assert.equal(qualifiedPrices.status,'blocked');assert.ok(qualifiedPrices.reason.includes('Kapitalmaßnahmenabdeckung'));assert.equal(qualifiedPrices.dataQuality.usable,true);
+for(const values of [
+ [...rawRows,{...rawRows[1]}],
+ [...rawRows,{...rawRows[1],low:'-1'}],
+ [...rawRows,{...rawRows[1]},{...rawRows[1]}],
+ ]){
+ const duplicate=await requestSimulation({meta:rawMeta,values});assert.equal(duplicate.status,'blocked');assert.equal(duplicate.dataQuality.usable,false);assert.ok(duplicate.dataQuality.duplicates>=1);assert.ok(duplicate.reason.includes('doppelte'));assert.equal(duplicate.netReturn,null);
+}
+for(const meta of [{...rawMeta,currency:'EUR'},{...rawMeta,mic_code:'XLON'},{...rawMeta,exchange_timezone:'UTC'}]){
+ const blocked=await requestSimulation({meta,values:rawRows});assert.equal(blocked.status,'blocked');assert.equal(blocked.dataQuality.usable,false);
+}
+const gap=await requestSimulation({meta:rawMeta,values:[rawRows[0],rawRows[2]]});assert.equal(gap.status,'blocked');assert.deepEqual(gap.dataQuality.missingSessions,['2026-09-29']);
+console.log('Paket 02: MAE −15%/−10%, split/entry/open-exit cases, shared raw API checks and non-overridable qualification passed.');

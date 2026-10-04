@@ -1,4 +1,4 @@
-# Datenbasis data-v2 · 04.10.2026
+# Datenbasis data-v3 · 04.10.2026
 
 ## Drei getrennte Ebenen
 1. `time_series?interval=1day&outputsize=1300&adjust=all`: nachträglich split- und dividendenbereinigte Indikatorreihe. Referenzkern/ Gewichte unverändert. Nicht als tatsächlicher damaliger Ausführungspreis verwenden. Spätere Anbieterrevisionen und Bereinigungen sind nicht point-in-time belegbar.
@@ -48,3 +48,10 @@ Die bestehenden Referenzmetriken bleiben zur Vergleichbarkeit erhalten, sind jet
 - https://www.nasdaq.com/market-activity/stock-market-holiday-schedule
 - https://www.nasdaq.com/press-release/nyse-group-announces-2025-2026-and-2027-holiday-and-early-closings-calendar-2024-11
 - https://www.nyse.com/publicdocs/nyse/markets/american-options/rule-interpretations/2025/National_Day_of_Mourning_20250102.pdf
+
+
+## Paket 02: gemeinsamer Kursadapter
+
+`adaptPrices()` ist die gemeinsame Normalisierung für Research (`validatePrices()`) und Simulation (`adaptRawSnapshot()`). Beide prüfen USD, unterstützten MIC, New-York-Zeitzone, abgeschlossene Börsensitzungen, positive plausible OHLC und Duplikate. Doppelte Tage bleiben auch bei drei Zeilen gesperrt; ein ungültiger zweiter Datensatz wird zusätzlich als ungültig gezählt. `sessionBars` erhält fehlende Sitzungen ausdrücklich als `{date, missing:true}`.
+
+Eine Archivsimulation muss nicht bis heute reichen. Ihr Prüfende ist der letzte gemeldete unterstützte Sitzungstag, begrenzt auf die zum Prüfzeitpunkt abgeschlossenen Sitzungen. Research behält seine heutige strenge Aktualitätsprüfung. Rohkurssprünge werden angezeigt; ihre wirtschaftliche Auflösung benötigt weiterhin belegte Kapitalmaßnahmen. Die Maßnahmen- und PIT-Freigaben bleiben `false`.

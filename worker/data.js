@@ -1,5 +1,5 @@
-// data-v2: daily regular-session calendars; no inferred prices or corporate actions.
-export const DATA_VERSION='data-v2';
+// data-v3: daily regular-session calendars; no inferred prices or corporate actions.
+export const DATA_VERSION='data-v3';
 const SUPPORTED=new Set(['XNAS','XNGS','XNMS','XNCM','XNYS','ARCX','XASE']);
 const CALENDAR_SOURCE='https://www.nyse.com/trade/hours-calendars';
 export function localParts(now,zone='America/New_York'){
@@ -33,24 +33,38 @@ export function lastCompleted(now,mic){
  }
  return null;
 }
-export function validatePrices(payload,adjust,now=new Date()){
+export function adaptPrices(payload,adjust,now=new Date()){
  const meta=payload.meta||{},mic=meta.mic_code,cutoff=lastCompleted(now,mic),issues=[];
- if(!cutoff||meta.exchange_timezone!=='America/New_York'||meta.currency!=='USD')return {bars:[],usable:false,issues:['Börse, Zeitzone oder Währung nicht unterstützt bzw. nicht bestätigt.'],meta,expectedLastSession:cutoff?.date||null};
- const map=new Map();let duplicates=0,invalid=0,unclosed=0,nonSessions=0;
+ if(!cutoff||meta.exchange_timezone!=='America/New_York'||meta.currency!=='USD')return {bars:[],sessionBars:[],usable:false,issues:['Börse, Zeitzone oder Währung nicht unterstützt bzw. nicht bestätigt.'],meta,expectedLastSession:cutoff?.date||null};
+ const map=new Map(),seen=new Set(),acceptedDays=[];let duplicates=0,invalid=0,unclosed=0,nonSessions=0;
  for(const row of payload.values||[]){
   const day=String(row.datetime||'').slice(0,10),s=session(day,mic);
   if(!s){invalid++;continue}if(!s.open){nonSessions++;continue}if(day>cutoff.date){unclosed++;continue}
+  acceptedDays.push(day);
+  // Count duplicates before OHLC validation; never let a later row restore a day.
+  const duplicate=seen.has(day);seen.add(day);
+  if(duplicate){duplicates++;map.set(day,null);}
   const bar={date:day,open:Number(row.open),high:Number(row.high),low:Number(row.low),close:Number(row.close),halted:row.halted===true?true:null};
   if(![bar.open,bar.high,bar.low,bar.close].every(v=>Number.isFinite(v)&&v>0)||bar.high<Math.max(bar.open,bar.close,bar.low)||bar.low>Math.min(bar.open,bar.close,bar.high)){invalid++;continue}
-  if(map.has(day)){duplicates++;map.delete(day);map.set(day,null);continue}map.set(day,bar);
+  if(!duplicate)map.set(day,bar);
  }
  const bars=[...map.values()].filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date));
- const missing=[];if(bars.length){let day=new Date(bars[0].date+'T12:00:00Z');while(iso(day)<=cutoff.date){if(session(iso(day),mic)?.open&&!map.get(iso(day)))missing.push(iso(day));day.setUTCDate(day.getUTCDate()+1)}}
+ const missing=[],sessionBars=[];if(acceptedDays.length){let day=new Date(acceptedDays.sort()[0]+'T12:00:00Z');while(iso(day)<=cutoff.date){const value=iso(day);if(session(value,mic)?.open){const bar=map.get(value);if(!bar)missing.push(value);sessionBars.push(bar||{date:value,missing:true});}day.setUTCDate(day.getUTCDate()+1)}}
  const stale=bars.at(-1)?.date!==cutoff.date;
  if(duplicates)issues.push(duplicates+' doppelte Tagesdatensätze ausgeschlossen');if(invalid)issues.push(invalid+' ungültige Datensätze ausgeschlossen');if(nonSessions)issues.push(nonSessions+' Kurse an Nicht-Handelstagen ausgeschlossen');if(missing.length)issues.push(missing.length+' fehlende Handelstage');if(stale)issues.push('Veraltet: letzter Kurs entspricht nicht dem letzten abgeschlossenen Handelstag');
  const jumps=[];for(let i=1;i<bars.length;i++)if(Math.abs(bars[i].close/bars[i-1].close-1)>.5)jumps.push(bars[i].date);
  if(jumps.length)issues.push(jumps.length+' Kurssprünge über 50 %: Kapitalmaßnahmenprüfung nötig');
- return {bars,meta,adjust,usable:!stale&&invalid===0&&duplicates===0&&nonSessions===0&&missing.length===0&&(adjust==='none'||jumps.length===0),issues,expectedLastSession:cutoff.date,lastSession:bars.at(-1)?.date||null,missingSessions:missing,invalid,duplicates,excludedUnclosed:unclosed,jumps,calendar:cutoff};
+ return {bars,sessionBars,meta,adjust,usable:!stale&&invalid===0&&duplicates===0&&nonSessions===0&&missing.length===0&&(adjust==='none'||jumps.length===0),issues,expectedLastSession:cutoff.date,lastSession:bars.at(-1)?.date||null,missingSessions:missing,invalid,duplicates,excludedUnclosed:unclosed,jumps,calendar:cutoff};
+}
+// Research and execution use the same normalization and qualification rules.
+export function validatePrices(payload,adjust,now=new Date()){
+ return adaptPrices(payload,adjust,now);
+}
+export function adaptRawSnapshot(payload,now=new Date()){
+ // An archived scenario need not end today. Never accept an unfinished session.
+ const dates=(payload?.values||[]).map(row=>String(row.datetime||'').slice(0,10)).filter(day=>session(day,payload?.meta?.mic_code)?.open).sort();
+ const last=dates.at(-1),archiveEnd=last?new Date(last+'T23:00:00Z'):now;
+ return adaptPrices(payload||{},'none',archiveEnd<now?archiveEnd:now);
 }
 // Retrospective prefix check, not proof of historical publication availability.
 export function validatePricePrefix(payload,adjust,decisionDate){

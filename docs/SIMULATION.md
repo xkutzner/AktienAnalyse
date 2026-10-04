@@ -1,7 +1,7 @@
-# Handelssimulation execution-v2 · 04.10.2026
+# Handelssimulation execution-v3 · 04.10.2026
 
 ## Geltungsbereich
-Neues, separates Modul `worker/simulation.js`. Der eingefrorene +5%-Referenzkern bleibt unverändert. Die bisherige raw-execution-v1-Hilfsfunktion ist nur für Kompatibilität erhalten; der neue Server-Endpunkt verwendet execution-v2. Keine neuen Indikatoren, kein Stop-Loss.
+Neues, separates Modul `worker/simulation.js`. Der eingefrorene +5%-Referenzkern bleibt unverändert. Die bisherige raw-execution-v1-Hilfsfunktion ist nur für Kompatibilität erhalten; der neue Server-Endpunkt verwendet execution-v3. Keine neuen Indikatoren, kein Stop-Loss.
 
 **Einstiegstag zählt als Handelstag 1.** Entscheidung am abgeschlossenen Tag t; Kauf an der nächsten regulären Eröffnung t+1. Zeitausstieg an der regulären Schlussauktion von t+20, sofern kein früherer Zielverkauf. 20 zählt Börsensitzungen, keine vorhandenen Kurszeilen. Fehlende Sitzungen bleiben im erwarteten Raster, nicht überspringen. Das gleiche Indexschema galt bereits in der Referenz, wird jetzt ausdrücklich benannt.
 
@@ -57,3 +57,10 @@ Der eigene Broker-/Tarifname und die sechs Kostenparameter werden lokal im Brows
 
 ## Vorgegebene Brokerprofile
 Siehe [BROKER-PROFILES.md](BROKER-PROFILES.md): offizielle heutige Tarife und Quellen; eigenständige Broker-Basisprovision statt manueller Gebühren, Mindest-/Stückgebühren, USD-Kostenszenario nur mit ganzen Einstiegsstücken. Strenge historische Ergebnisse bleiben gesperrt. Trade Republic EUR wird nicht als USD behandelt. Slippage bleibt ein eigener Parameter.
+
+
+## Paket 02: MAE-Grenze und Rohdatenprüfung
+
+Bei einem angenommenen Intraday-Zielverkauf zählt das Open nach Split-Normierung zum bereits bekannten Zwischenverlust. Die untere Grenze berücksichtigt zusätzlich das möglicherweise vor dem Verkauf liegende Low; dessen zeitliche Reihenfolge bleibt unbekannt. Einstieg 100, bisheriges Low 99, folgendes Open 90 / Low 85 / High 106, Ziel 105 und Nullkosten ergeben −15 % bis −10 %. Ein Verkauf am Open berücksichtigt weiterhin kein späteres Tagestief.
+
+Die API baut Ausführungsreihen über `adaptRawSnapshot()` aus demselben Adapter wie Research. Doppelte Rohdatentage, OHLC-Fehler, unsupported Metadaten und Sitzungslücken sperren die Simulation vor dem Ausführungskern. Historische Maßnahmenfreigaben werden dadurch nicht erteilt.
