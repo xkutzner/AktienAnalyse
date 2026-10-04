@@ -14,14 +14,14 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 06 | Gemeinsamer execution-v4-Kern und execution-label-v1; getrennte Kosten und FX-Sperren | `28d51aa` / `2d45819` · PR #6 | Dreizehn Suiten mit tatsächlichem Sourcecommit, 20 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
 | 07 | Versionierter Einstieg, experimenteller Stop und festes Kalenderenddatum | `2820c4a` / `3c100d9` · PR #7 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 16 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Ausführungsabnahme offen |
 
-Details: [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
+Details: [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 08a | In Umsetzung, eigener neuer Agentkontext | Handelbarkeit, Gap-/Downside-Risiko |
+| 08a | Technisch lokal umgesetzt; Review/Upload/PR/Merge ausstehend | Volumen, präfixbasierter USD-Handelswertproxy und Gap-/Downside-Audit; [Details](RISK-FEATURES.md) |
 | 08b | Wartet auf 05–07 | Bestätigte Ereignisse, Verfügbarkeit und Änderungen |
 | 09 | Wartet auf 06–08 | Szenarien, Kein-Kauf-Regeln, Analysekarte |
 | 10 | Wartet auf 09 | UI-Abnahme und echter Analyse-/Archiv-/Replay-Durchlauf |

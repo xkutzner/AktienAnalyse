@@ -108,3 +108,5 @@ Watchlistwechsel entfernt alte Kurs-/Ranking-/Detail-/Benchmark-/Backtestwerte u
 ## Paket 07 · technisch implementiert
 
 trade-plan-v1 ergänzt decision-time Rohpreisbereich, next-open Gültigkeit, experimentellen Stop und exakte regularSessions-Deadline. Gemeinsamer Kern und Labels behalten die alte Referenz ohne Plan. Konservative Stop/Ziel-Reihenfolge, Gap unter Stop, getrennte Exitgründe und blockierter Tag20-Halt sind geprüft. Vierzehn Suiten plus Build/Artefakt; reale Datenabnahme und Mergeprüfung offen. Details: [TRADE-PLAN.md](TRADE-PLAN.md).
+
+Paket08a: Volumen und experimenteller Präfix-Risikoaudit lokal implementiert; Review/Upload/PR/Merge ausstehend. Details: [RISK-FEATURES.md](RISK-FEATURES.md). Keine Schwellen- oder Kaufstatusfreigabe; Paket08b und reale Datenabnahme bleiben offen.

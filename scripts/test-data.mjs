@@ -48,3 +48,35 @@ assert.equal(invalidFirst.sessionBars[0].date,'2026-09-28');assert.equal(invalid
 const nonSession=adaptRawSnapshot({meta:archivedMeta,values:[...archivedRows,{...archivedRows[0],datetime:'2026-09-27'}]},archivedNow);assert.equal(nonSession.usable,false);
 const unfinished=adaptRawSnapshot({meta:archivedMeta,values:archivedRows},new Date('2026-09-30T14:00:00Z'));assert.equal(unfinished.lastSession,'2026-09-29');assert.equal(unfinished.excludedUnclosed,1);assert.ok(!unfinished.sessionBars.some(bar=>bar.date==='2026-09-30'));
 console.log('Shared price adapter checked: archive cutoff, duplicate poisoning, invalid first session, non-session and unclosed data.');
+
+// 08a: same adapter retains optional volume; risk never reads the future.
+const {riskAt,DATA_VERSION}=await import('../worker/data.js');
+assert.equal(DATA_VERSION,'data-v4');
+for(const volume of [undefined,null,'',-1,'bad',Infinity])assert.equal(validatePrices({meta,values:rows.map(r=>({...r,volume}))},'none',now).bars[0].volume,null);
+assert.equal(validatePrices({meta,values:rows.map(r=>({...r,volume:'120'}))},'none',now).bars[0].volume,120);
+const riskBars=rows.map((r,i)=>({date:r.datetime,open:i===2?50:100,close:i===2?50:100,volume:200}));
+const options={lookback:2,mic:'XNAS',priceBasis:'raw',volumeBasis:'raw',asOf:'2026-10-02T21:00:00Z'};
+const noCoverage=riskAt(riskBars,2,{...options,actions:{splits:[],dividends:[]}});
+assert.equal(noCoverage.openingGaps.value,null);assert.equal(noCoverage.downsideMeasure.value,null);
+assert.equal(noCoverage.averageDailyTradedValue.value,15000);
+const qualifiedActions={coverageVerified:true,pointInTimeVerified:true,coverage:{from:'2026-09-30',to:'2026-10-02',availableAt:'2026-09-30T20:00:00Z'},otherActions:{status:'confirmed-none'},splits:[{effectiveDate:'2026-10-02',priceFactor:.5,knownAt:'2026-09-30T20:00:00Z'}],dividends:[]};
+const splitRisk=riskAt(riskBars,2,{...options,actions:qualifiedActions});
+assert.equal(splitRisk.openingGaps.value,0);assert.equal(splitRisk.downsideMeasure.value,0);
+assert.deepEqual(riskAt([...riskBars,{date:'2026-10-05',open:1,close:1,volume:1}],2,{...options,actions:qualifiedActions}),splitRisk);
+assert.equal(riskAt(riskBars,2,{...options,actions:{...qualifiedActions,coverage:{...qualifiedActions.coverage,to:'2026-10-01'}}}).openingGaps.value,null);
+assert.equal(riskAt(riskBars,2,{...options,actions:{...qualifiedActions,splits:[{...qualifiedActions.splits[0],knownAt:'2026-10-05T20:00:00Z'}]}}).openingGaps.value,null);
+assert.equal(riskAt(riskBars,2,{...options,priceBasis:'adjusted'}).averageDailyTradedValue.value,null);
+assert.equal(riskAt(riskBars,2,{...options,volumeBasis:'unknown'}).averageDailyTradedValue.value,null);
+assert.equal(riskAt(riskBars.map(b=>({...b,volume:null})),2,options).averageDailyTradedValue.value,null);
+const adjusted=riskBars.map(b=>({...b,open:50,close:50}));
+assert.equal(riskAt(adjusted,2,{...options,priceBasis:'adjusted'}).downsideMeasure.value,0);
+assert.equal(riskAt([riskBars[0],{...riskBars[1],date:'2026-10-02'},{...riskBars[2],date:'2026-10-05'}],2,options).openingGaps.value,null);
+console.log('08a risk checks passed: volume unknown, prefix invariance, split normalization, coverage and USD basis.');
+assert.equal(riskAt(riskBars,2,{...options,actions:qualifiedActions,asOf:'2026-10-02T19:00:00Z'}).openingGaps.value,null);
+assert.equal(riskAt(riskBars,2,{...options,actions:{...qualifiedActions,splits:[{priceFactor:.5}]}}).openingGaps.value,null);
+assert.equal(riskAt(riskBars,2,{...options,actions:{...qualifiedActions,dividends:[{exDate:'2026-10-02',amount:1,currency:'EUR',knownAt:options.asOf}]}}).openingGaps.value,null);
+assert.equal(riskAt(riskBars.map(b=>({...b,volume:1e308})),2,options).averageDailyTradedValue.value,null);
+assert.equal(riskAt(riskBars.map(b=>({...b,date:'invalid'})),2,options).openingGaps.value,null);
+assert.equal(riskAt(riskBars.map(b=>({...b,volume:0})),2,options).averageDailyTradedValue.value,0);
+
+assert.equal(riskAt(riskBars,2,{...options,actions:qualifiedActions,asOf:'2026-10-02T19:00:00Z'}).averageDailyTradedValue.value,null);

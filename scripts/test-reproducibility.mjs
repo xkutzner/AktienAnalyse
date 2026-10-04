@@ -16,6 +16,12 @@ try{
  const query='https://test.local/api/stocks?symbols=AAPL&capital=12345';
  const result=await (await worker.fetch(new Request(query),env)).json();
  assert.equal(result.manifest.sourceCommit,sha);
+ assert.equal(providerCalls,2,'08a must not add provider calls to standard research');
+ assert.equal(result.riskModel.version,'risk-prefix-v1');
+ assert.equal(result.riskModel.rankingChanged,false);
+ assert.equal(result.stocks[0].risk.averageDailyTradedValue.value,null);
+ assert.equal(result.stocks[0].risk.downsideMeasure.basis,'provider-adjusted-price-return-proxy');
+ assert.equal(result.stocks[0].risk.thresholdsApplied,false);
  assert.equal(result.manifest.historicalVintageStatus,'unknown');
  assert.equal(result.manifest.times[0].availableAt,null);
  assert.equal(result.manifest.times[0].publicationTime,null);
@@ -87,5 +93,19 @@ try{
  const spine=dates.slice(0,700),bars=spine.map(date=>({date,open:100,close:100,high:101,low:99}));
  const run=(ds,bs)=>model.walkForward([],{},bs,[],ds).decisions.map(row=>row.decisionDate);
  assert.deepEqual(run([...spine,...dates.slice(700,721)],[...bars,...bars.slice(0,21)]).filter(date=>run(spine,bars).includes(date)),run(spine,bars));
+ let auditCalls=0;
+ globalThis.fetch=async url=>{auditCalls++;const u=new URL(url);if(u.pathname==='/splits')return Response.json({splits:[]});if(u.pathname==='/dividends')return Response.json({dividends:[]});const data=payload('AAPL');data.values=data.values.map(r=>({...r,volume:200}));return Response.json(data)};
+ const audited=await (await worker.fetch(new Request('https://test.local/api/data?symbol=AAPL'),env)).json();
+ assert.equal(auditCalls,4,'risk audit reuses existing four downloads');
+ assert.equal(audited.rawRisk.averageDailyTradedValue.status,'known');
+ assert.equal(audited.rawRisk.averageDailyTradedValue.method,'close-times-volume-proxy-not-VWAP');
+ const expectedAuditValue=payload('AAPL').values.slice(-20).reduce((sum,r)=>sum+r.close*200,0)/20;
+ assert.equal(audited.rawRisk.averageDailyTradedValue.value,expectedAuditValue);
+ assert.equal(audited.rawRisk.openingGaps.value,null,'empty provider ledger never qualifies action absence');
+ assert.equal(audited.rawRisk.downsideMeasure.value,null);
+ assert.ok(Object.values(audited.dataCapabilities.gates).every(g=>g.status==='blocked'));
+ globalThis.fetch=async url=>{const u=new URL(url);if(u.pathname==='/splits')return Response.json({splits:[]});if(u.pathname==='/dividends')return Response.json({dividends:[]});const data=payload('AAPL');data.values.push({...data.values.at(-1),volume:200});return Response.json(data)};
+ const blockedAudit=await (await worker.fetch(new Request('https://test.local/api/data?symbol=AAPL'),env)).json();
+ assert.equal(blockedAudit.rawRisk.averageDailyTradedValue.value,null,'unusable raw series cannot claim audit liquidity');
  console.log('Reproducibility: immutable archives, commit gate, fixed grid, unknown availability/vintages, provider-free replay, integrity, experiment events passed'+(sha?' (exact commit replay exercised).':' (commit unavailable; replay explicitly blocked).'));
 }finally{globalThis.fetch=originalFetch}

@@ -15,3 +15,5 @@ Ein negativer Gap durch den Stop füllt modelliert am Open abzüglich Ausführun
 Vierzehn synthetische Suiten, Build und Artefaktprüfung umfassen Gap, Entrybar mit beiden Triggern, Labelparität, Day20-Halt, exakte Kalenderdeadline, DST/earlyclose, fehlende Verfügbarkeit/MIC, Verzicht ohne Verschieben, getrennte Exitkategorien und unveränderte Referenz. Tatsächlicher Uploadcommit wird vom Orchestrator separat geprüft; Neutralbuild hat SOURCE_COMMIT=null.
 
 Reale Provider-/PIT-/Maßnahmenabnahme bleibt offen. Die drei Capability-Gates bleiben gesperrt, Simulation akzeptiert keine Clientfreigabe der Maßnahmenabdeckung. Keine Nettofreigabe, keine Orders oder Veröffentlichung. Risiko-/Featurepaket08 und Produktkarte09 sind nicht Teil dieses Pakets.
+
+Paket08a ergänzt getrennte experimentelle Präfix-Risikowerte; [RISK-FEATURES.md](RISK-FEATURES.md). Adjusted Research bleibt ohne ausführbaren Rohpreisplan; die Risikoergänzung verändert keine Einstieg-/Stopregel und qualifiziert keine Datenfreigabe.
