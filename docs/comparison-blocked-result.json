@@ -1,0 +1,169 @@
+{
+  "version": "comparison-preparation-v1",
+  "status": "blocked",
+  "evidence": "unavailable",
+  "empiricalEvaluation": false,
+  "higherNetReturnClaim": false,
+  "sourceCommit": null,
+  "sourceCommitStatus": "unknown",
+  "exitPolicyVersion": "comparison-exit-policy-v1",
+  "protocol": {
+    "version": "evaluation-protocol-v2",
+    "status": "fixed-for-future-experiments-not-evaluated",
+    "appliesFrom": "analysis-archive-v1",
+    "existingExperimentsPreregistered": false,
+    "baselines": [
+      "cash",
+      "SPY-same-exit",
+      "SPY-buy-and-hold",
+      "watchlist-equal-weight",
+      "watchlist-momentum20"
+    ],
+    "baselineRules": {
+      "cash": "USD cash, 0 nominal interest, 20-session capital window",
+      "spySameExit": "Next regular open; +5% price target or session20 close; same execution/cost path",
+      "spyBuyAndHold": "Next regular open through session20 close; no target",
+      "watchlistEqualWeight": "Equal initial capital across eligible watchlist; next open through session20 close; individual order costs",
+      "watchlistMomentum20": "Highest known close-to-close 20-session return; nonpositive => cash; next open through session20 close; no target"
+    },
+    "periods": {
+      "training": [
+        "2021-01-04",
+        "2023-12-29"
+      ],
+      "validation": [
+        "2024-01-02",
+        "2025-12-31"
+      ],
+      "exploratoryDiagnostic": [
+        "2026-01-02",
+        "2026-12-31"
+      ],
+      "outerProspectiveTest": [
+        "2027-01-04",
+        "2027-11-30"
+      ],
+      "prospectiveFrom": "2027-01-04"
+    },
+    "purgeOutcomeSessions": 20,
+    "costs": {
+      "currency": "USD",
+      "capital": 10000,
+      "entryFeeBps": 10,
+      "exitFeeBps": 10,
+      "entryFixedFee": 0,
+      "exitFixedFee": 0,
+      "entrySlippageBps": 5,
+      "exitSlippageBps": 5,
+      "stressMultiplier": 2,
+      "fx": "unsupported",
+      "entrySpreadBps": 0,
+      "exitSpreadBps": 0,
+      "spreadStatus": "zero-scenario-assumption-unverified; real historical spread unknown",
+      "executionVersion": "execution-v4"
+    },
+    "primaryMetrics": [
+      "capital-window-net-excess-vs-SPY-same-exit",
+      "daily-net-max-drawdown"
+    ],
+    "secondaryMetrics": [
+      "loss-severity",
+      "turnover",
+      "cash-fraction",
+      "unknown-outcomes",
+      "forecast-error",
+      "interval-coverage"
+    ],
+    "selectionRule": "Parameters selected on training/validation only; outer test untouched. Report rejected variants and uncertainty.",
+    "limitations": [
+      "2026 diagnostic is retrospective, never an untouched outer test",
+      "Calendar ends 2027-12-31; decisions without 20 covered outcome sessions remain unknown; no 2028 calendar inferred",
+      "Qualified historical vintages, action coverage and unified execution required before evaluation"
+    ]
+  },
+  "parameters": {},
+  "costStress": {
+    "status": "not-run",
+    "rule": "Repeat with every separate fee/spread/slippage assumption multiplied by 2; same decisions and capital windows"
+  },
+  "inputHashes": [],
+  "outerTest": {
+    "status": "frozen-untouched",
+    "accessed": false,
+    "parameterAndPerformanceAccessed": false
+  },
+  "hashScope": "Entire supplied input is hashed for fixture identity; hashing is not an empirical outer-test evaluation",
+  "strategies": [
+    {
+      "strategy": "model",
+      "status": "blocked",
+      "rows": [],
+      "metrics": null
+    },
+    {
+      "strategy": "cash",
+      "status": "blocked",
+      "rows": [],
+      "metrics": null
+    },
+    {
+      "strategy": "SPY-same-exit",
+      "status": "blocked",
+      "rows": [],
+      "metrics": null
+    },
+    {
+      "strategy": "SPY-buy-and-hold",
+      "status": "blocked",
+      "rows": [],
+      "metrics": null
+    },
+    {
+      "strategy": "watchlist-equal-weight",
+      "status": "blocked",
+      "rows": [],
+      "metrics": null
+    },
+    {
+      "strategy": "watchlist-momentum20",
+      "status": "blocked",
+      "rows": [],
+      "metrics": null
+    }
+  ],
+  "negativeFindings": [
+    {
+      "code": "qualified-dataset-unavailable",
+      "detail": "Qualified historical vintages, raw prices, action coverage, availability evidence and historically qualified calendar are absent. Client PIT/coverage flags cannot qualify a dataset."
+    },
+    {
+      "code": "outer-test-not-evaluated",
+      "detail": "No qualified prospective dataset supplied; outer test remains untouched."
+    }
+  ],
+  "unsupportedCases": [
+    "Public JSON qualification claims",
+    "Today-adjusted history as historical vintage",
+    "EUR/FX execution without evidence",
+    "Historical reference selection bug as performance baseline",
+    "Historical quantiles as calibrated predictive intervals"
+  ],
+  "parameterSelection": {
+    "status": "not-performed",
+    "allowedPeriods": [
+      "training",
+      "validation"
+    ],
+    "outerUsed": false
+  },
+  "qualificationAdapter": {
+    "status": "not-installed",
+    "requiredEvidence": [
+      "immutable snapshot hashes",
+      "historical availability times",
+      "raw/action ledger coverage",
+      "qualified session calendar",
+      "independent source entitlement and provenance"
+    ]
+  }
+}

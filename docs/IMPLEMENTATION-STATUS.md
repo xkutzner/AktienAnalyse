@@ -18,14 +18,14 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 09 | Gemeinsame Analysekarte und harte Kein-Kauf-Regeln | `377cd83` / `83e823c` · PR #10 | Fünfzehn Suiten mit tatsächlichem Sourcecommit, 15 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; empirische Freigabe offen |
 | 10 | UI-Fehlerführung und funktionale Mock-Abnahme; echte Integration offen | `396cd25` / `95e03aa` · PR #11 | Fünfzehn Suiten direkt offline mit tatsächlichem Sourcecommit, 9 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; Browser/Screenreader/Provider offen |
 
-Details: [ANALYSIS-CARD.md](ANALYSIS-CARD.md), [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
+Details: [COMPARISON-PREPARATION.md](COMPARISON-PREPARATION.md), [ANALYSIS-CARD.md](ANALYSIS-CARD.md), [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 11 | Technische Vorbereitung in eigenem neuen Agentkontext; empirische Abnahme blockiert | Zeitlich getrennter Vergleich; qualifizierte Daten sind notwendig |
+| 11 | Technisch lokal vorbereitet; Review/Upload/Merge ausstehend, empirische Abnahme blockiert | Providerfreier synthetischer Vergleichsharness, gemeinsamer time-only-Kern und vollständige Sperrdatei; qualifizierte Daten fehlen |
 | 12 | Wartet auf 08 und 11 | Drei Ergänzungsgruppen einzeln auf Mehrwert prüfen |
 | 13 | Wartet auf 11–12 | Höchstens ein zusätzlicher Renditeansatz |
 | 14 | Wartet auf 10–12 | Prospektiver Schattenbetrieb und Freigabe; benötigt spätere Marktbeobachtungen |
