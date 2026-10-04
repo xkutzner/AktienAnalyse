@@ -2,7 +2,7 @@
 
 Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). Paketdetails stehen in den jeweils verlinkten Dateien. Dieser Bericht behauptet keine Prognosegüte.
 
-## Paketstand (06 noch lokal, nicht in main)
+## In main umgesetzt
 
 | Paket | Ergebnis | Commit / Merge | Prüfung |
 |---|---|---|---|
@@ -11,7 +11,7 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 03 | Gemeinsamer Analysevertrag, USD-Szenario-Anlagebetrag, getrennte Renditebasis/Status | `9c87906` / `cf272e2` · PR #3 | Zehn Testsuiten, Build, Artefakt; API/UI-Vertrag und Betragsübertragung geprüft |
 | 04 | Manifest, immutable Archive/Replay, festes Raster und Prüfprotokoll | `19c77e2` / `c3e92a4` · PR #4 | Elf Testsuiten mit tatsächlichem Sourcecommit, bytegenaue Git-Prüfung, Build und Artefakt; Liveintegration offen |
 | 05 | Quellenfähigkeiten, unabhängige Gates und immutable Sammlung; Datenabnahme offen | `a23ba9e` / `a396b1e` · PR #5 | Zwölf Testsuiten mit tatsächlichem Sourcecommit, 14 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt |
-| 06 | Technisch lokal umgesetzt; reale Datenabnahme offen | Upload/PR/Merge ausstehend | Dreizehn Suiten, neue synthetische Label-/Kernparität; finaler tatsächlicher Sourcecommit-Test ausstehend |
+| 06 | Gemeinsamer execution-v4-Kern und execution-label-v1; getrennte Kosten und FX-Sperren | `28d51aa` / `2d45819` · PR #6 | Dreizehn Suiten mit tatsächlichem Sourcecommit, 20 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
 
 Details: [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
@@ -20,8 +20,7 @@ Details: [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 06 | Technischer Review / Upload ausstehend | execution-v4 / execution-label-v1; echte qualifizierte Labels weiterhin unbekannt |
-| 07 | Wartet auf 06 | Einstieg, Stop, Ziel, Enddatum |
+| 07 | In Umsetzung, eigener neuer Agentkontext | Einstieg, Stop, Ziel, Enddatum |
 | 08a | Wartet auf 05–07 | Handelbarkeit, Gap-/Downside-Risiko |
 | 08b | Wartet auf 05–07 | Bestätigte Ereignisse, Verfügbarkeit und Änderungen |
 | 09 | Wartet auf 06–08 | Szenarien, Kein-Kauf-Regeln, Analysekarte |
