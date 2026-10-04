@@ -52,6 +52,10 @@ export function validatePrices(payload,adjust,now=new Date()){
  if(jumps.length)issues.push(jumps.length+' Kurssprünge über 50 %: Kapitalmaßnahmenprüfung nötig');
  return {bars,meta,adjust,usable:!stale&&invalid===0&&duplicates===0&&nonSessions===0&&missing.length===0&&(adjust==='none'||jumps.length===0),issues,expectedLastSession:cutoff.date,lastSession:bars.at(-1)?.date||null,missingSessions:missing,invalid,duplicates,excludedUnclosed:unclosed,jumps,calendar:cutoff};
 }
+// Retrospective prefix check, not proof of historical publication availability.
+export function validatePricePrefix(payload,adjust,decisionDate){
+ return validatePrices({...payload,values:(payload.values||[]).filter(row=>String(row.datetime||'').slice(0,10)<=decisionDate)},adjust,new Date(decisionDate+'T23:00:00Z'));
+}
 export async function providerData(endpoint,parameters,env){
  const retrievedAt=new Date().toISOString(),url=new URL('https://api.twelvedata.com/'+endpoint);
  for(const [k,v] of Object.entries(parameters))url.searchParams.set(k,String(v));url.searchParams.set('apikey',env.TWELVEDATA_API_KEY);
@@ -68,7 +72,7 @@ export async function loadPrices(symbol,env,adjust='all'){
  const record=await providerData('time_series',{symbol,interval:'1day',outputsize:1300,adjust},env);
  if(record.error||!Array.isArray(record.payload?.values))return {symbol,error:{symbol,message:record.error||'Keine Kursreihe'},provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived};
  const quality=validatePrices(record.payload,adjust);
- return {symbol,bars:quality.bars,quality,provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived,currency:record.payload.meta?.currency};
+ return {symbol,bars:quality.bars,pricePayload:record.payload,quality,provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived,currency:record.payload.meta?.currency};
 }
 export function normalizeActions(splitRecord,dividendRecord){
  const issues=[],splits=[],dividends=[];
@@ -95,3 +99,4 @@ export function simulateRaw(bars,decisionIndex,actions,{strict=true,horizon=20,t
  }
  return {status:strict?'verified':'retrospective',priceReturn:exit/entry-1,dividendReturn:receivable/entry,tradeReturn:(exit+receivable)/entry-1,targetHit,adverseMove:lowest/entry-1,ledger,cashDividendStatus:'Anspruch am Ex-Tag; kein erfundener Zahlungstermin',model:'raw-execution-v1'};
 }
+

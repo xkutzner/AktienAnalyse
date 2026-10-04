@@ -1,4 +1,4 @@
-import { loadPrices, providerData, normalizeActions, session, DATA_VERSION } from "./data.js";
+import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, DATA_VERSION } from "./data.js";
 import {simulateTrade, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
@@ -88,9 +88,10 @@ async function getResearch(url, env) {
   const downloads = await Promise.all(requested.map((symbol) => fetchHistory(symbol, env)));
   const bySymbol = Object.fromEntries(downloads.filter((item) => item.bars).map((item) => [item.symbol, item]));
   const errors = downloads.filter((item) => item.error).map((item) => item.error);
+  const backtest = historicalBacktest(downloads, symbols);
   const benchmark = bySymbol.SPY;
-  if (!benchmark || benchmark.bars.length < 100) {
-    return json({ error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, dataQuality:downloads.map(item=>{const {bars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
+  if (!benchmark || !benchmark.quality?.usable || benchmark.bars.length < 100) {
+    return json({ error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
   }
 
   // Expected exchange sessions form the spine: missing SPY rows must not compress time.
@@ -102,7 +103,7 @@ async function getResearch(url, env) {
   const series = [];
   for (const symbol of symbols) {
     const downloaded = bySymbol[symbol];
-    if (!downloaded) continue;
+    if (!downloaded || !downloaded.quality?.usable) continue;
     const map = new Map(downloaded.bars.map((bar) => [bar.date, bar]));
     const aligned = dates.map((date) => map.get(date) || null);
     const current = featureAt(aligned, marketBars, aligned.length - 1);
@@ -112,7 +113,7 @@ async function getResearch(url, env) {
     }
     series.push({ symbol, bars: aligned, current,qualityUsable:downloaded.quality?.usable });
   }
-  if (!series.length) return json({ provider: "Twelve Data", stocks: [], errors, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
+  if (!series.length) return json({ provider: "Twelve Data", stocks: [], errors, backtest, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
 
   const currentIndex = dates.length - 1;
   const records = Object.fromEntries(series.map((stock) => [stock.symbol, buildRecords(stock.bars, marketBars, marketFeatures)]));
@@ -130,7 +131,6 @@ async function getResearch(url, env) {
     (b.probabilityTarget ?? -Infinity) - (a.probabilityTarget ?? -Infinity) ||
     b.score - a.score);
 
-  const backtest = walkForward(series, records, marketBars, marketFeatures, dates);
   const marketNow = marketFeatures[currentIndex] || {};
   return json({
     provider: "Twelve Data",
@@ -141,8 +141,8 @@ async function getResearch(url, env) {
       factors: ["20-Tage-Momentum", "60-Tage-Momentum", "relative Stärke gegen SPY", "Abstand zum 50-Tage-Mittel", "Volatilität"] },
     stocks: currentForecasts,
     best: currentForecasts.find((stock) => stock.qualityUsable && stock.sampleCount >= MIN_ANALOGS && stock.expectedReturn > 0) || null,
-    backtest: {...backtest, validationStatus:"reference-retrospective-only", pointInTimeVerified:false,
-      warning:"Referenzvergleich auf heute abgerufener bereinigter Historie; keine belegte damalige Verfügbarkeit, keine handelbaren Rohkursausführungen. Nicht als validierter Backtest verwenden."},
+    backtest: {...backtest, validationStatus:"selection-v2-retrospective-only", pointInTimeVerified:false,
+      warning:"Präfixbasierte Auswahl (selection-v2) auf heute abgerufener bereinigter Historie; keine belegte damalige Verfügbarkeit, keine handelbaren Rohkursausführungen. Nicht als validierter Backtest verwenden."},
     automaticSimulation:{status:"blocked",reason:"Vollständige Kapitalmaßnahmen und historische Datenstände fehlen",costs:DEFAULT_COSTS,version:SIMULATION_VERSION,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],dayConvention:"Einstiegstag = Handelstag 1; maximal 20 Handelstage, kein Stop-Loss",automatic:true},
     executionModel:{version:SIMULATION_VERSION,horizon:20,target:0.05,entryDayCounts:true,noStopLoss:true,costs:DEFAULT_COSTS,costAssumptions:true},
     strictBacktest:{status:"blocked",reason:"Historische Veröffentlichungsstände und vollständige Kapitalmaßnahmenabdeckung fehlen"},
@@ -154,8 +154,20 @@ async function getResearch(url, env) {
 
 async function fetchHistory(symbol, env) {
   const result=await loadPrices(symbol,env,'all');
-  if(result.quality && (result.quality.usable!==true || !result.quality.lastSession || result.quality.lastSession!==result.quality.expectedLastSession))return {...result,bars:null,error:{symbol,message:result.quality.issues.join(' · ')||'Datenstand unbekannt'}};
+  if(result.quality && (result.quality.usable!==true || !result.quality.lastSession || result.quality.lastSession!==result.quality.expectedLastSession))return {...result,error:{symbol,message:result.quality.issues.join(' · ')||'Datenstand unbekannt'}};
   return result;
+}
+
+function historicalBacktest(downloads, symbols){
+ const benchmark=downloads.find(item=>item.symbol==='SPY');
+ if(!benchmark?.bars?.length||!benchmark.quality?.expectedLastSession)return null;
+ const dates=[],cursor=new Date(benchmark.bars[0].date+'T12:00:00Z');
+ while(cursor.toISOString().slice(0,10)<=benchmark.quality.expectedLastSession){const day=cursor.toISOString().slice(0,10);if(session(day,benchmark.quality.meta.mic_code)?.open)dates.push(day);cursor.setUTCDate(cursor.getUTCDate()+1)}
+ const align=bars=>{const map=new Map(bars.map(bar=>[bar.date,bar]));return dates.map(day=>map.get(day)||null)};
+ const marketBars=align(benchmark.bars),marketFeatures=dates.map((_,i)=>featureAt(marketBars,marketBars,i));
+ const series=downloads.filter(item=>symbols.includes(item.symbol)&&item.bars?.length).map(item=>({symbol:item.symbol,bars:align(item.bars),historicalQuality:index=>validatePricePrefix(item.pricePayload,'all',dates[index]).usable&&validatePricePrefix(benchmark.pricePayload,'all',dates[index]).usable}));
+ const records=Object.fromEntries(series.map(stock=>[stock.symbol,buildRecords(stock.bars,marketBars,marketFeatures)]));
+ return {...walkForward(series,records,marketBars,marketFeatures,dates),validationStatus:'selection-v2-retrospective-only',pointInTimeVerified:false,warning:'Präfixbasierte Auswahl auf heute abgerufener bereinigter Historie; historische Verfügbarkeit und Rohkursausführung nicht belegt. Keine geprüfte Prognosegüte.'};
 }
 
 function featureAt(stockBars, marketBars, index) {
@@ -204,7 +216,7 @@ function simulateTarget(bars, decisionIndex) {
   let targetHit = false;
   let lowest = entry;
   for (let index = entryIndex; index <= exitIndex; index += 1) {
-    if (!bars[index]) return null;
+    if (!validHistoricalBar(bars[index])) return null;
     if (bars[index].high >= entry * (1 + TARGET)) targetHit = true;
     lowest = Math.min(lowest, bars[index].low);
   }
@@ -233,55 +245,52 @@ function estimate(features, records, marketUp, currentIndex) {
   };
 }
 
+function validHistoricalBar(bar){
+ return !!bar&&[bar.open,bar.high,bar.low,bar.close].every(value=>Number.isFinite(value)&&value>0)&&bar.high>=Math.max(bar.open,bar.close,bar.low)&&bar.low<=Math.min(bar.open,bar.close,bar.high);
+}
+function prefixUsable(bars,index){
+ for(let i=0;i<=index;i++)if(!validHistoricalBar(bars[i])||(i>0&&Math.abs(bars[i].close/bars[i-1].close-1)>.5))return false;
+ return true;
+}
 function walkForward(series, records, marketBars, marketFeatures, dates) {
   const testStart = Math.max(260, dates.length - 504);
   const windows = [];
   for (let index = testStart; index + HORIZON < dates.length; index += HORIZON) {
-    const marketOutcome = simulateTarget(marketBars, index);
-    if (!marketOutcome) continue;
-    const ranked = series.map((stock) => {
-      const features = featureAt(stock.bars, marketBars, index);
-      if (!features) return null;
-      const estimateAtDate = estimate(features, records[stock.symbol], marketFeatures[index]?.r20 >= 0, index);
-      return { symbol: stock.symbol, features, ...estimateAtDate, outcome: simulateTarget(stock.bars, index) };
-    }).filter((row) => row && row.outcome && row.sampleCount >= MIN_ANALOGS && Number.isFinite(row.expectedReturn))
-      .sort((a, b) => b.expectedReturn - a.expectedReturn || b.probabilityTarget - a.probabilityTarget || b.features.score - a.features.score);
-    const pick = ranked[0] && ranked[0].expectedReturn > 0 ? ranked[0] : null;
-    windows.push({
-      date: dates[index + 1],
-      symbol: pick?.symbol || null,
-      expectedReturn: pick?.expectedReturn ?? null,
-      expectedTargetProbability: pick?.probabilityTarget ?? null,
-      realizedReturn: pick?.outcome.tradeReturn ?? 0,
-      targetHit: pick?.outcome.targetHit ?? false,
-      averageAdverseMove: pick?.outcome.adverseMove ?? 0,
-      benchmarkReturn: marketOutcome.tradeReturn,
-      benchmarkTargetHit: marketOutcome.targetHit,
-    });
+    // Finish the decision before reading any evaluation-window prices.
+    const universe=series.filter(stock=>stock.historicalQuality?stock.historicalQuality(index):prefixUsable(stock.bars,index)&&prefixUsable(marketBars,index));
+    const ranked = universe.map(stock=>{
+      const features=featureAt(stock.bars,marketBars,index);
+      if(!features)return null;
+      const fit=estimate(features,records[stock.symbol]||[],marketFeatures[index]?.r20>=0,index);
+      return {symbol:stock.symbol,features,...fit};
+    }).filter(row=>row&&row.sampleCount>=MIN_ANALOGS&&Number.isFinite(row.expectedReturn))
+      .sort((a,b)=>b.expectedReturn-a.expectedReturn||b.probabilityTarget-a.probabilityTarget||b.features.score-a.features.score);
+    const pick=ranked[0]?.expectedReturn>0?ranked[0]:null;
+    const outcome=pick?simulateTarget(series.find(stock=>stock.symbol===pick.symbol).bars,index):null;
+    const marketOutcome=simulateTarget(marketBars,index);
+    windows.push({decisionDate:dates[index],date:dates[index+1],universe:universe.map(stock=>stock.symbol),candidates:ranked,
+      symbol:pick?.symbol||null,expectedReturn:pick?.expectedReturn??null,expectedTargetProbability:pick?.probabilityTarget??null,
+      outcomeStatus:pick?(outcome?'known':'unknown'):'cash',realizedReturn:pick?(outcome?.tradeReturn??null):0,
+      targetHit:pick?(outcome?.targetHit??null):false,averageAdverseMove:pick?(outcome?.adverseMove??null):0,
+      benchmarkStatus:marketOutcome?'known':'unknown',benchmarkReturn:marketOutcome?.tradeReturn??null,benchmarkTargetHit:marketOutcome?.targetHit??null});
   }
-  const trades = windows.filter((window) => window.symbol);
-  const selectedReturns = windows.map((window) => window.realizedReturn);
-  const spyReturns = windows.map((window) => window.benchmarkReturn);
-  const tradeReturns = trades.map((window) => window.realizedReturn);
-  return {
-    method: "Walk-forward, nicht überlappende 20-Tage-Perioden",
-    testFrom: windows[0]?.date || null,
-    testTo: windows.at(-1)?.date || null,
-    windows: windows.length,
-    tradeCount: trades.length,
-    target: TARGET,
-    averageReturnPerWindow: mean(selectedReturns),
-    averageTradeReturn: mean(tradeReturns),
-    hitRate: trades.length ? trades.filter((window) => window.targetHit).length / trades.length : null,
-    winRate: trades.length ? trades.filter((window) => window.realizedReturn > 0).length / trades.length : null,
-    averageAdverseMove: trades.length ? mean(trades.map((window) => window.averageAdverseMove)) : null,
-    averageBenchmarkReturn: mean(spyReturns),
-    excessPerWindow: mean(selectedReturns) - mean(spyReturns),
-    maxDrawdown: maxDrawdown(selectedReturns),
-    minimumTrades: 12,
-    sufficientSample: trades.length >= 12,
-    recent: windows.slice(-10).reverse(),
-  };
+  const trades=windows.filter(row=>row.symbol),knownTrades=trades.filter(row=>row.outcomeStatus==='known');
+  const knownWindows=windows.filter(row=>Number.isFinite(row.realizedReturn));
+  const knownBenchmark=windows.filter(row=>Number.isFinite(row.benchmarkReturn));
+  const paired=windows.filter(row=>Number.isFinite(row.realizedReturn)&&Number.isFinite(row.benchmarkReturn));
+  const unknownOutcomeCount=trades.length-knownTrades.length;
+  return {version:'selection-v2',method:'Walk-forward, präfixbasierte Auswahl vor späterer Auswertung; nicht überlappende 20-Tage-Perioden',
+    testFrom:windows[0]?.date||null,testTo:windows.at(-1)?.date||null,windows:windows.length,tradeCount:trades.length,
+    knownOutcomeCount:knownTrades.length,unknownOutcomeCount,cashCount:windows.length-trades.length,
+    knownWindowCount:knownWindows.length,knownBenchmarkCount:knownBenchmark.length,unknownBenchmarkCount:windows.length-knownBenchmark.length,pairedWindowCount:paired.length,
+    aggregateBasis:'Mittelwerte nur über bekannte Ergebnisse; Überschuss nur über paarweise bekannte Fenster. Unbekannt ist kein Cash und kein Nullertrag.',target:TARGET,
+    averageReturnPerWindow:mean(knownWindows.map(row=>row.realizedReturn)),averageTradeReturn:mean(knownTrades.map(row=>row.realizedReturn)),
+    hitRate:knownTrades.length?knownTrades.filter(row=>row.targetHit).length/knownTrades.length:null,
+    winRate:knownTrades.length?knownTrades.filter(row=>row.realizedReturn>0).length/knownTrades.length:null,
+    averageAdverseMove:mean(knownTrades.map(row=>row.averageAdverseMove)),averageBenchmarkReturn:mean(knownBenchmark.map(row=>row.benchmarkReturn)),
+    excessPerWindow:mean(paired.map(row=>row.realizedReturn-row.benchmarkReturn)),
+    maxDrawdown:unknownOutcomeCount?null:maxDrawdown(windows.map(row=>row.realizedReturn)),
+    minimumTrades:12,sufficientSample:knownTrades.length>=12,decisions:windows,recent:windows.slice(-10).reverse()};
 }
 
 function maxDrawdown(returns) {
@@ -362,3 +371,4 @@ async function calendar(url,env){
  const risks=symbols.map(symbol=>{const relevant=events.filter(e=>!e.symbol||e.symbol===symbol),points=Math.min(100,relevant.reduce((n,e)=>n+e.points,0));return{symbol,score:complete?points:null,knownPoints:points,label:complete?(points>=60?'Hoch':points>=30?'Erhöht':'Niedrig'):'Unbekannt / unvollständig'};});
  return json({start,end,checkedAt:new Date().toISOString(),events,sources,risks},200,{'cache-control':'private, max-age=3600'});
 }
+

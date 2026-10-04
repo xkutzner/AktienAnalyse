@@ -1,5 +1,17 @@
 # Roadmap · tatsächlicher Stand 04.10.2026
 
+## Paket 01 · umgesetzt
+
+Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02–18 bleiben offen.
+
+- `selection-v2` entscheidet anhand des Datenpräfixes bis zum Entscheidungstag. Spätere Kurse werden erst für die Auswertung gelesen.
+- Fehlender späterer Einstiegskurs, ungültige spätere OHLC und fehlende spätere SPY-Sitzungen ändern keine damalige Auswahl. Unbekannte Outcomes bleiben `null`; kein Ersatzkandidat, kein nachträglicher Cash-Trade.
+- Historische Präfixprüfung ist von der heutigen strengen Kursfreigabe getrennt. Auch aktuell gesperrte Aktien können in früheren, damals fehlerfreien Präfixen vorkommen.
+- Referenzdateien, Hash und Golden-Ergebnisse unter `reference/v1` unverändert. Aktuelle Rangliste bleibt auf den bisherigen Preismerkmalen und Referenzschätzungen.
+- Neun Testsuiten, Build und Artefaktprüfung bestanden. Details und Abnahmefälle: [SELECTION-V2.md](SELECTION-V2.md).
+
+Dies korrigiert den Auswahlfehler, belegt aber keine Prognosegüte. Historische Vintages, Rohkursausführung und Kostenfreigaben fehlen weiterhin. Keine Site-Veröffentlichung.
+
 ## Produktziel
 Research für eine eingegebene US-Aktien-Watchlist und maximal 20 Handelstage. Einstieg nächstes reguläres Open, Einstiegstag=Tag1, +5 % Preisziel, Tag20-Close als Zeitausstieg, kein Stop-Loss. Kein gesicherter Profit, keine Netto-Kaufempfehlung, keine Orderausführung. Schrittweise Umsetzung; folgende Planung ist keine automatische Beauftragung.
 
@@ -70,3 +82,4 @@ Watchlistwechsel entfernt alte Kurs-/Ranking-/Detail-/Benchmark-/Backtestwerte u
 
 ## Detaildokumentation
 [DATA-BASIS.md](DATA-BASIS.md), [SIMULATION.md](SIMULATION.md), [ANALOGUES.md](ANALOGUES.md), [BROKER-PROFILES.md](BROKER-PROFILES.md), [UI.md](UI.md), [Referenz](../reference/v1/README.md).
+
