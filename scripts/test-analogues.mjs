@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {estimateFeatures,fitTraining,featureDistance,trainingThreshold} from '../worker/analogues.js';
 const keys=['r20','r60','rel20','trend50','vol20'];
-const records=Array.from({length:70},(_,i)=>({index:80+i*20,features:{r20:.04*Math.sin(i*.4),r60:.07*Math.sin(i*.4)+.01*Math.cos(i),rel20:.03*Math.sin(i*.7),trend50:.03*Math.cos(i*.3),vol20:.3+.05*Math.cos(i*.8)},proxyReturn:.02*Math.sin(i)+.01,netReturn:.02*Math.sin(i)+.008,netVerified:true,pointInTimeVerified:true,knownAtIndex:100+i*20,marketUp:true}));
+const records=Array.from({length:70},(_,i)=>({index:80+i*20,features:{r20:.04*Math.sin(i*.4),r60:.07*Math.sin(i*.4)+.01*Math.cos(i),rel20:.03*Math.sin(i*.7),trend50:.03*Math.cos(i*.3),vol20:.3+.05*Math.cos(i*.8)},proxyReturn:.02*Math.sin(i)+.01,netReturn:.02*Math.sin(i)+.008,labelVersion:'execution-label-v1',executionVersion:'execution-v4',netVerified:true,pointInTimeVerified:true,knownAtIndex:100+i*20,marketUp:true}));
 const query={r20:0,r60:0,rel20:0,trend50:0,vol20:.3};
 const r=estimateFeatures(query,records,2000,{basis:'net',marketUp:true});assert.equal(r.status,'exploratory');assert.ok(r.caseCount>=12);assert.ok(r.effectiveCaseCount>=8&&r.effectiveCaseCount<=r.caseCount+1e-8);assert.ok(r.averageSimilarity>0&&r.averageSimilarity<=1);assert.ok(Number.isFinite(r.expectedNetReturn));assert.ok(r.metrics.lossProbability>=0&&r.metrics.lossProbability<=1);assert.ok(r.metrics.meanUncertainty95.low<=r.metrics.meanUncertainty95.high);assert.ok(r.metrics.outcomeRange80.low<=r.metrics.outcomeRange80.high);
 const future={...records[0],index:3000,knownAtIndex:3020,features:Object.fromEntries(keys.map(key=>[key,1e9])),proxyReturn:-1,netReturn:-1};assert.deepEqual(estimateFeatures(query,[...records,future],2000,{basis:'net',marketUp:true}),r);
@@ -23,3 +23,4 @@ new Function('stocks','el','pct','safe',view+';renderAnalogComparison();')(stock
 for(const label of ['Alte Referenz','Netto-Schätzung','Median','Verlusthäufigkeit','effektiv','Ähnlichkeit','Ergebnisbereich','Mittelwert-Unsicherheit','keine Nettoerträge'])assert.ok(target.innerHTML.includes(label),label);
 assert.ok(target.innerHTML.includes('historische Datenstände fehlen'));
 console.log('Comparison surface checked: old/new, quality, net qualification, outcome range and separate mean uncertainty.');
+

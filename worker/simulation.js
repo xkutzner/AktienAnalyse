@@ -1,5 +1,5 @@
-export const SIMULATION_VERSION='execution-v3';
-export const DEFAULT_COSTS=Object.freeze({entryFeeBps:10,exitFeeBps:10,entryFixedFee:0,exitFixedFee:0,entrySlippageBps:5,exitSlippageBps:5});
+export const SIMULATION_VERSION='execution-v4';
+export const DEFAULT_COSTS=Object.freeze({entryFeeBps:10,exitFeeBps:10,entryFixedFee:0,exitFixedFee:0,entrySlippageBps:5,exitSlippageBps:5,entrySpreadBps:0,exitSpreadBps:0});
 export const BROKER_PROFILES={"tr-best": {"name": "Trade Republic · Bestpreis", "currency": "EUR", "fixed": 1, "feeText": "1 EUR je Kauf / Verkauf", "scope": "Bestpreis, Aktien / ETFs", "api": "Keine offizielle öffentliche Trading-API verifiziert; derzeit keine Empfehlung für einen Bot", "source": "https://support.traderepublic.com/de-de/3372dc64-59cb-4521-a424-1ee812f264a4", "note": "Andere Ausführungsplätze und EUR-Kurse. Im USD-Simulator gesperrt; keine erfundene Umrechnung.", "checkedAt": "2026-10-04", "historicalRatesVerified": false}, "tr-direct": {"name": "Trade Republic · Direktpreis", "currency": "EUR", "fixed": 2, "feeText": "2 EUR je Kauf / Verkauf (1 EUR Abwicklung + 1 EUR Handelsplatz)", "scope": "Direktpreis; gewählte Börse", "api": "Keine offizielle öffentliche Trading-API verifiziert", "source": "https://support.traderepublic.com/de-de/835f9deb-b864-4587-b428-7facfc55296c", "note": "Bei Nicht-EUR-Börsen Währungsumrechnung. Historische FX-Kosten fehlen; USD-Simulation gesperrt.", "checkedAt": "2026-10-04", "historicalRatesVerified": false}, "ibkr-fixed": {"name": "Interactive Brokers · US Fixed SmartRouting", "currency": "USD", "perShare": 0.005, "minimum": 1, "cap": 0.01, "feeText": "0,005 USD je Aktie; mindestens 1 USD, höchstens 1 % Orderwert", "scope": "Ganze US-Aktien, Fixed, SmartRouting; keine direkt gerouteten API-Orders", "api": "TWS API / IB Gateway · erste Wahl: direkte API und niedrige Basisprovision", "apiSource": "https://interactivebrokers.ie/de/trading/ib-api.php", "source": "https://www.interactivebrokers.ie/en/pricing/commissions-stocks.php", "note": "Nur Basisprovision. Regulatorische Verkaufsgebühren, FX, Marktdatenabos und Teilausführungen fehlen.", "checkedAt": "2026-10-04", "historicalRatesVerified": false}, "captrader-us": {"name": "CapTrader · US-Aktien", "currency": "USD", "perShare": 0.01, "minimum": 2, "feeText": "0,01 USD je Aktie; mindestens 2 USD", "scope": "Standard-US-Aktien, Nasdaq; kein OTC, keine Bruchteile", "api": "IB API / IB Gateway · Alternative mit deutschem Ansprechpartner", "apiSource": "https://www.captrader.com/plattformen/handel-via-api/ib-api/", "source": "https://www.captrader.com/konditionen/aktien-handel/", "note": "Nur Basisprovision; Obergrenze nicht verifiziert. Regulatorische Verkaufsgebühren, FX, Marktdatenabos und Sonderfälle fehlen.", "checkedAt": "2026-10-04", "historicalRatesVerified": false}, "lynx-us": {"name": "LYNX · US-Aktien Nasdaq", "currency": "USD", "perShare": 0.01, "minimum": 5, "cap": 0.02, "feeText": "0,01 USD je Aktie; mindestens 5 USD, höchstens 2 % Orderwert", "scope": "Ganze US-Aktien, Nasdaq-Standardtarif", "api": "TWS API / IB Gateway · weitere Alternative mit deutschem Service", "apiSource": "https://www.lynxbroker.de/service/software/trader-workstation/", "source": "https://www.lynxbroker.de/preise-konditionen/", "note": "Nur Basisprovision. FX, Steuern, Marktdatenabos, mögliche externe Gebühren und Teilausführungen fehlen.", "checkedAt": "2026-10-04", "historicalRatesVerified": false}};
 export function brokerBaseFee(id,shares,price){
  const p=BROKER_PROFILES[id];if(!p||p.currency!=='USD'||!Number.isFinite(shares)||shares<0||!Number.isFinite(price)||price<=0)throw Error('Brokergebühr nicht in USD berechenbar');
@@ -14,19 +14,25 @@ export function dailyDrawdown(curve){let peak=0,dd=0;for(const row of curve){if(
 const validBar=b=>b&&[b.open,b.high,b.low,b.close].every(v=>Number.isFinite(v)&&v>0)&&b.high>=Math.max(b.open,b.close,b.low)&&b.low<=Math.min(b.open,b.close,b.high);
 // bars must be an expected regular-session spine, including null for absent sessions.
 export function simulateTrade(bars,decisionIndex,actions,options={}){
+ // Spread inputs are one-way execution concessions (not full quoted bid/ask spreads).
  const costs=validateCosts(options.costs),capital=options.capital??10000,horizon=options.horizon??20,target=.05;
  const broker=options.brokerProfile?BROKER_PROFILES[options.brokerProfile]:null;
  const blocked=reason=>({version:SIMULATION_VERSION,status:'blocked',reason,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[]});
+ if((options.currency??'USD')!=='USD')return blocked('Historische FX- und passende Ausführungsdaten fehlen: keine Nettorendite in anderer Währung');
+ if(options.priceBasis&&options.priceBasis!=='raw')return blocked('Bereinigte Kurse sind nur Feature-/Proxybasis, keine Rohpreisausführung');
+ if(broker&&['entryFeeBps','exitFeeBps','entryFixedFee','exitFixedFee'].some(key=>costs[key]!==0))return blocked('Brokerbasisprovision und benutzerdefinierte Gebühren dürfen nicht gleichzeitig angesetzt werden');
  if(options.brokerProfile&&!broker)return blocked('Unbekanntes Brokerprofil');
  if(broker?.currency==='EUR')return blocked('EUR-Brokergebühren / historische Wechselkurse und passende Ausführungsplätze fehlen');
  if(broker&&options.strict!==false)return blocked('Heutiger Brokertarif ist kein belegter historischer Tarif; nur Kostenszenario möglich');
  if(!Number.isInteger(decisionIndex)||decisionIndex<0||!Number.isFinite(capital)||capital<=0||!Number.isInteger(horizon)||horizon<1||horizon>20)return blocked('Ungültiges Kapital oder Haltedauer');
+ if(!Array.isArray(actions?.splits)||!Array.isArray(actions?.dividends))return blocked('Maßnahmenledger fehlt oder ist unvollständig');
+ if(actions.dividends.some(div=>div.currency&&div.currency!=='USD'))return blocked('Dividenden-FX fehlt');
  if(!actions?.coverageVerified)return blocked('Kapitalmaßnahmenabdeckung nicht bestätigt');
  if(options.strict!==false&&!actions.pointInTimeVerified)return blocked('Historische Informationsstände fehlen');
  const first=decisionIndex+1,last=decisionIndex+horizon;
  if(!bars[decisionIndex]?.date||!validBar(bars[first]))return blocked('Nächste reguläre Eröffnung fehlt: Einstieg nicht verschieben');
  if(bars[first].halted===true)return blocked('Handelsunterbrechung am Einstieg: keine nachweisbare Eröffnungsausführung');
- const entryOpen=bars[first].open,entryPrice=entryOpen*(1+costs.entrySlippageBps/10000);
+ const entryOpen=bars[first].open,entryPrice=entryOpen*(1+(costs.entrySlippageBps+costs.entrySpreadBps)/10000);
  let qty=(capital-costs.entryFixedFee)/(entryPrice*(1+costs.entryFeeBps/10000));
  if(broker){let low=0,high=Math.floor(capital/entryPrice);while(low<high){const mid=Math.ceil((low+high)/2);if(mid*entryPrice+brokerBaseFee(options.brokerProfile,mid,entryPrice)<=capital)low=mid;else high=mid-1}qty=low}
  if(qty<=0)return blocked('Kapital reicht nicht für Einstiegskosten');
@@ -49,13 +55,13 @@ export function simulateTrade(bars,decisionIndex,actions,options={}){
   if(exitIndex===null){
    const limit=qty*entryPrice*(1+target)/shares;
    const openEligible=bar.open>=limit;
-   const bufferedTouch=bar.high*(1-costs.exitSlippageBps/10000)>=limit;
+   const bufferedTouch=bar.high*(1-(costs.exitSlippageBps+costs.exitSpreadBps)/10000)>=limit;
    if(bar.halted===true){
     if(i===last)return {...blocked('Handelsunterbrechung an Tag '+horizon+': rechtzeitiger Ausstieg nicht nachweisbar'),daily,partial:true};
     assumptions.push(bar.date+': Zielausführung wegen dokumentierter Unterbrechung nicht angenommen.');
    }else if(openEligible||bufferedTouch){
     exitReason=openEligible?'target-open-gap':'target-intraday-assumed';
-    exitPrice=openEligible?Math.max(limit,bar.open*(1-costs.exitSlippageBps/10000)):limit;
+    exitPrice=openEligible?Math.max(limit,bar.open*(1-(costs.exitSlippageBps+costs.exitSpreadBps)/10000)):limit;
     uncertainIntraday=!openEligible;
     // Gap exit occurs at open: use only open. Intraday low ordering is unknown.
     const exitExcursion=shares*exitPrice/(qty*entryPrice)-1;
@@ -65,7 +71,7 @@ export function simulateTrade(bars,decisionIndex,actions,options={}){
    }else{
     mae=Math.min(mae,shares*bar.low/(qty*entryPrice)-1);mfe=Math.max(mfe,shares*bar.high/(qty*entryPrice)-1);
     if(bar.high>=limit)assumptions.push(bar.date+': Ziel nur berührt; Slippage-Puffer nicht erreicht, kein Limit-Fill modelliert.');
-    if(i===last){exitReason='time-close';exitPrice=bar.close*(1-costs.exitSlippageBps/10000);mae=Math.min(mae,shares*exitPrice/(qty*entryPrice)-1);mfe=Math.max(mfe,shares*exitPrice/(qty*entryPrice)-1);exitIndex=i;}
+    if(i===last){exitReason='time-close';exitPrice=bar.close*(1-(costs.exitSlippageBps+costs.exitSpreadBps)/10000);mae=Math.min(mae,shares*exitPrice/(qty*entryPrice)-1);mfe=Math.max(mfe,shares*exitPrice/(qty*entryPrice)-1);exitIndex=i;}
    }
    if(exitIndex===i){
     const proceeds=shares*exitPrice;exitFee=broker?brokerBaseFee(options.brokerProfile,shares,exitPrice):costs.exitFixedFee+proceeds*costs.exitFeeBps/10000;
@@ -78,7 +84,9 @@ export function simulateTrade(bars,decisionIndex,actions,options={}){
   daily.push({date:bar.date,day:i-first+1,cash,positionValue,dividendReceivable:receivable,equity:cash+positionValue+receivable,grossEquity:grossCash+positionValue+receivable});
  }
  const exitDay=bars[exitIndex].date,atExit=daily.find(d=>d.date===exitDay);
- return {version:SIMULATION_VERSION,status:options.strict===false?'retrospective-assumed':'modeled-assumed',dayConvention:'Einstiegstag = Handelstag 1; Tag20 = decisionIndex+20',costs,costAssumption:true,entryDate:bars[first].date,exitDate:exitDay,holdingSessions:exitIndex-first+1,entryOpen,entryPrice,exitPrice,exitReason,exitExecutionProven:false,limitFillRule:'Open >= Limit: max(Limit, Open × (1−ExitSlippage)); intraday nur High × (1−ExitSlippage) >= Limit, Fill exakt Limit. Nie unter Verkaufslimit.',grossReturn:atExit.grossEquity/capital-1,netReturn:atExit.equity/capital-1,grossPnl:atExit.grossEquity-capital,netPnl:atExit.equity-capital,totalFees:entryFee+exitFee,mae:uncertainIntraday?null:mae,maeBounds:maeBounds||[mae,mae],mfe,maxDrawdown:dailyDrawdown(daily),daily,ledger,assumptions,noStopLoss:true};
+ const exitConcession=Math.max(0,ledger.at(-1).shares*(grossExit-exitPrice)),exitBps=costs.exitSpreadBps+costs.exitSlippageBps;
+ const exitSpread=exitBps?exitConcession*costs.exitSpreadBps/exitBps:0,exitSlippage=exitBps?exitConcession*costs.exitSlippageBps/exitBps:0;
+ return {version:SIMULATION_VERSION,status:options.strict===false?'retrospective-assumed':'modeled-assumed',dayConvention:'Einstiegstag = Handelstag 1; Tag20 = decisionIndex+20',costs,costAssumption:true,currency:'USD',priceBasis:'raw',feeRule:broker?'broker-base-only':'fixed-plus-notional',executionConcessions:{entrySpread:qty*entryOpen*costs.entrySpreadBps/10000,entrySlippage:qty*entryOpen*costs.entrySlippageBps/10000,exitSpread,exitSlippage},capitalWindowNetReturn:daily.at(-1).equity/capital-1,entryDate:bars[first].date,exitDate:exitDay,holdingSessions:exitIndex-first+1,entryOpen,entryPrice,exitPrice,exitReason,exitExecutionProven:false,limitFillRule:'Open >= Limit: max(Limit, Open × (1−ExitSpread−ExitSlippage)); intraday nur High × (1−ExitSpread−ExitSlippage) >= Limit, Fill exakt Limit. Nie unter Verkaufslimit.',grossReturn:atExit.grossEquity/capital-1,netReturn:atExit.equity/capital-1,grossPnl:atExit.grossEquity-capital,netPnl:atExit.equity-capital,totalFees:entryFee+exitFee,mae:uncertainIntraday?null:mae,maeBounds:maeBounds||[mae,mae],mfe,maxDrawdown:dailyDrawdown(daily),daily,ledger,assumptions,noStopLoss:true};
 }
 export function simulatePortfolio(bars,decisions,actions,options={}){
  let capital=options.capital??10000,curve=[],trades=[],lastDecision=-1,grossCarry=0;
@@ -96,3 +104,15 @@ export function simulatePortfolio(bars,decisions,actions,options={}){
  return {status:'modeled-assumed',trades,curve,maxDrawdown:dailyDrawdown(curve),netReturn:capital/(options.capital??10000)-1,grossReturn:curve.length?curve.at(-1).grossEquity/(options.capital??10000)-1:null,grossReturnStatus:'Identische Trades/Stückzahlen; ersparte Kosten bleiben unverzinst als Cash, keine unabhängige Brutto-Neuallokation'};
 }
 
+
+// Shared outcome adapter: features/adjusted proxies never enter this execution path.
+export const EXECUTION_LABEL_VERSION='execution-label-v1';
+export function executionLabel(bars,decisionIndex,actions,options={}){
+ const unknown=reason=>({labelVersion:EXECUTION_LABEL_VERSION,executionVersion:SIMULATION_VERSION,index:decisionIndex,knownAtIndex:null,netReturn:null,capitalWindowNetReturn:null,netVerified:false,pointInTimeVerified:false,status:'unknown',reason});
+ if(options.priceBasis!=='raw')return unknown('Qualifizierte Rohpreisbasis fehlt; adjusted Proxy bleibt separat');
+ if(!Number.isInteger(options.knownAtIndex)||options.knownAtIndex<decisionIndex+(options.horizon??20))return unknown('Outcome-Verfügbarkeitsindex fehlt oder liegt vor Fensterende');
+ const result=simulateTrade(bars,decisionIndex,actions,options);
+ if(result.status==='blocked')return {...unknown(result.reason),execution:result};
+ const pit=actions.pointInTimeVerified===true;
+ return {labelVersion:EXECUTION_LABEL_VERSION,executionVersion:SIMULATION_VERSION,index:decisionIndex,knownAtIndex:options.knownAtIndex,netReturn:result.netReturn,capitalWindowNetReturn:result.capitalWindowNetReturn,netVerified:pit&&options.strict!==false,pointInTimeVerified:pit,status:'modeled-assumed',execution:result};
+}

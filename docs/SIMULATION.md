@@ -1,3 +1,5 @@
+Aktueller Kern ab Paket 06: `execution-v4`, Details und Grenzen in [EXECUTION-LABELS.md](EXECUTION-LABELS.md). Nachfolgender Bericht beschreibt den vorherigen Stand.
+
 # Handelssimulation execution-v3 · 04.10.2026
 
 ## Geltungsbereich

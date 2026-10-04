@@ -97,6 +97,8 @@ Vorläufige Produktentscheidungen:
 
 ### 06 · Einen gemeinsamen Ausführungs- und Kostenpfad schaffen
 
+**Stand:** Technisch lokal umgesetzt, Review/Upload/Merge ausstehend; echte historische Labels und Kostenabnahme blockiert. Details: [EXECUTION-LABELS.md](EXECUTION-LABELS.md). Synthetische Parität ist keine Daten- oder Prognosefreigabe.
+
 **Priorität:** P0 · **Abhängigkeit:** 02–05 · **Umfang:** groß
 
 - Historische Trainingslabels, Szenarien und Strategievergleiche über denselben versionierten Ausführungskern berechnen.
