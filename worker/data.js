@@ -76,17 +76,18 @@ export async function providerData(endpoint,parameters,env){
  let payload=null,error=null,status=null;
  try{const response=await fetch(url,{signal:AbortSignal.timeout(12000)});status=response.status;payload=await response.json();if(!response.ok||payload.status==='error'){const message=String(payload.message||'');error=Number(payload.code)===429||status===429?'Kreditlimit erreicht':/plan|subscription|upgrade|permission/i.test(message)?'Im Tarif nicht freigeschaltet':'Anbieterfehler HTTP '+status;payload=null}}catch{error='Verbindung, Zeitlimit oder Antwortformat fehlgeschlagen'}
  if(payload&&env.TWELVEDATA_API_KEY)payload=JSON.parse(JSON.stringify(payload).split(env.TWELVEDATA_API_KEY).join('[REDACTED]'));
- const provenance={source:'Twelve Data /'+endpoint,parameters,requestedAt:retrievedAt,retrievedAt:new Date().toISOString(),publicationTime:null,historicalVintage:null,pointInTimeVerified:false,httpStatus:status,period:{from:parameters.start_date||null,to:parameters.end_date||null},unknownFields:['Veröffentlichungszeit','historischer Datenstand']};
+ const provenance={source:'Twelve Data /'+endpoint,parameters,requestedAt:retrievedAt,retrievedAt:new Date().toISOString(),publicationTime:null,availableAt:null,historicalVintage:null,pointInTimeVerified:false,httpStatus:status,period:{from:parameters.start_date||null,to:parameters.end_date||null},unknownFields:['Veröffentlichungszeit','historischer Datenstand']};
  const snapshotId=crypto.randomUUID();let archived=false;
- if(payload){const rows=payload.values||payload.splits||payload.dividends||[];const days=rows.map(r=>r.datetime?.slice(0,10)||r.date||r.ex_date).filter(Boolean).sort();if(days.length)provenance.period={from:days[0],to:days.at(-1)};}
- try{if(env.BUCKET){await env.BUCKET.put('snapshots/'+snapshotId+'.json',JSON.stringify({dataVersion:DATA_VERSION,snapshotId,provenance,payload,error}),{httpMetadata:{contentType:'application/json'}});archived=true}}catch{archived=false}
+ if(payload){const rows=payload.values||payload.splits||payload.dividends||[];const days=(Array.isArray(rows)?rows:[]).map(r=>r.datetime?.slice(0,10)||r.date||r.ex_date).filter(Boolean).sort();if(days.length)provenance.period={from:days[0],to:days.at(-1)};}
+ try{if(env.BUCKET){const stored=await env.BUCKET.put('snapshots/'+snapshotId+'.json',JSON.stringify({dataVersion:DATA_VERSION,snapshotId,provenance,payload,error}),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});archived=stored!==null}}catch{archived=false}
  return {payload,error,provenance,snapshotId,archived};
 }
 export async function loadPrices(symbol,env,adjust='all'){
  const record=await providerData('time_series',{symbol,interval:'1day',outputsize:1300,adjust},env);
- if(record.error||!Array.isArray(record.payload?.values))return {symbol,error:{symbol,message:record.error||'Keine Kursreihe'},provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived};
- const quality=validatePrices(record.payload,adjust);
- return {symbol,bars:quality.bars,pricePayload:record.payload,quality,provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived,currency:record.payload.meta?.currency};
+ if(record.error||!Array.isArray(record.payload?.values))return {symbol,normalizationAt:new Date().toISOString(),error:{symbol,message:record.error||'Keine Kursreihe'},provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived};
+ const normalizationAt=new Date().toISOString();
+ const quality=validatePrices(record.payload,adjust,new Date(normalizationAt));
+ return {symbol,normalizationAt,bars:quality.bars,pricePayload:record.payload,quality,provenance:record.provenance,snapshotId:record.snapshotId,archived:record.archived,currency:record.payload.meta?.currency};
 }
 export function normalizeActions(splitRecord,dividendRecord){
  const issues=[],splits=[],dividends=[];

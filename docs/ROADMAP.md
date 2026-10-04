@@ -79,15 +79,15 @@ Watchlistwechsel entfernt alte Kurs-/Ranking-/Detail-/Benchmark-/Backtestwerte u
 - Historisches Universum/Delistings: heutige kleine Tech-Watchlist rückwirkend ist selektiv.
 - Alter `walkForward()` filtert vor Auswahl auf verfügbare spätere Outcomes; mögliche Hindsight-/Availability-Verzerrung separat beheben und prüfen. In diesem UI-Schritt unverändert.
 - Einheitlicher Ausführungs-/Outcomepfad für Labels, neue Schätzung und täglichen Strategietest fehlt; derzeit Proxys über `simulateTarget()`, separater execution-v3-Kern.
-- Vollständige Experimentmanifeste (Snapshotzuordnung, Modellhash, Zeitpunkt, Parameter, Ergebnis) und Replay ergänzen.
+- Paket 04 technisch umgesetzt: Buildcommit-/Parameter-/Kalender-/Snapshotmanifest, unveränderliche Research- und Kostenszenarioarchive, providerfreier Replay mit Integritätsgate. Reale Archivintegration bleibt offen; siehe [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 
 ### P1 – Validierung und Auswahl
-- Vorab festgelegte zeitlich getrennte Entwicklungs-/Testperioden, Kostenannahmen und Benchmarks.
+- Paket 04 legt Entwicklungs-/Validierungsblöcke, künftigen prospektiven Test 2027, Baselines, Szenariokosten und Hauptmetriken fest. 2026 ist retrospektive Diagnose; vorhandene Versuche bleiben nicht vorregistriert. Qualifizierte Auswertung noch offen.
 - Neue Vergleichsmethode fair gegen unveränderte Referenz prüfen; Gewichte/Grenzen nur im Training optimieren.
 - Negative Ergebnisse, Kalibrierung, Verlustschwere und tägliche Netto-Drawdowns berichten; keine Verbesserung vor Nachweis.
 - Cash-/Trade-Mittel, SPY-Zielstrategie und zusätzlicher Buy-and-hold-/Cashvergleich unterscheiden.
 - Bedingter Bootstrap berücksichtigt keinen Refit; Blocklängen und Modellwahlunsicherheit prüfen.
-- Bewegliches 1.300-Bar-Fenster verschiebt Sampling ab Index80; feste historische Verankerung erwägen.
+- Paket 04 verankert Sampling am US-Sitzungsraster ab 2021-01-04; fehlender Präfix bleibt sichtbar. Trainingsumfang kann im 1.300-Bar-Fenster weiterhin schrumpfen; kein erfundener Datenergänzungspfad.
 
 ### P2 – Produkt und Betrieb
 - Visuelle Browserprüfung auf 320/375px, Desktop, 200%-Textzoom und Screenreader ergänzen.
