@@ -1,4 +1,4 @@
-import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, DATA_VERSION } from "./data.js";
+import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, DATA_VERSION } from "./data.js";
 import {simulateTrade, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
@@ -25,12 +25,13 @@ export default {
         if(records.some(record=>record.provenance.parameters.symbol!==raw.provenance.parameters.symbol))return json({message:"Snapshots gehören nicht zur selben Aktie"},400);
         const actions=normalizeActions(splits,dividends);
         // Adapter cannot assert historical vintages or full action coverage. No client override.
-        const rows=raw.payload?.values||[],map=new Map(rows.map(row=>[row.datetime?.slice(0,10),{date:row.datetime?.slice(0,10),open:Number(row.open),high:Number(row.high),low:Number(row.low),close:Number(row.close),halted:row.halted===true?true:null}]));
-        const dates=[...map.keys()].filter(Boolean).sort(),bars=[];
-        if(dates.length){const cursor=new Date(dates[0]+'T12:00:00Z');while(cursor.toISOString().slice(0,10)<=dates.at(-1)){const date=cursor.toISOString().slice(0,10);if(session(date,raw.payload?.meta?.mic_code)?.open)bars.push(map.get(date)||{date,missing:true});cursor.setUTCDate(cursor.getUTCDate()+1)}}
+        const quality=adaptRawSnapshot(raw.payload);
+        const {bars:normalized,sessionBars,...dataQuality}=quality;
+        if(!quality.usable)return json({version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
+        const bars=sessionBars;
         const index=input.decisionDate?bars.findIndex(bar=>bar.date===input.decisionDate):Math.max(0,bars.length-21);
         const result=simulateTrade(bars,index,actions,{costs,strict:true,brokerProfile:input.brokerProfile});
-        return json({...result,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
+        return json({...result,dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
       } catch {return json({message:"Ungültige Eingabe oder Archiv nicht lesbar"},400)}
     }
     if (url.pathname === "/api/data") {
@@ -91,7 +92,7 @@ async function getResearch(url, env) {
   const backtest = historicalBacktest(downloads, symbols);
   const benchmark = bySymbol.SPY;
   if (!benchmark || !benchmark.quality?.usable || benchmark.bars.length < 100) {
-    return json({ error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
+    return json({ error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
   }
 
   // Expected exchange sessions form the spine: missing SPY rows must not compress time.
@@ -147,7 +148,7 @@ async function getResearch(url, env) {
     executionModel:{version:SIMULATION_VERSION,horizon:20,target:0.05,entryDayCounts:true,noStopLoss:true,costs:DEFAULT_COSTS,costAssumptions:true},
     strictBacktest:{status:"blocked",reason:"Historische Veröffentlichungsstände und vollständige Kapitalmaßnahmenabdeckung fehlen"},
     dataVersion:DATA_VERSION,
-    dataQuality:downloads.map(item=>{const {bars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,snapshotId:item.snapshotId,archived:item.archived,error:item.error||null}}),
+    dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,snapshotId:item.snapshotId,archived:item.archived,error:item.error||null}}),
     errors,
   }, 200, { "cache-control": "private, max-age=180" });
 }

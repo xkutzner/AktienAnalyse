@@ -2,7 +2,7 @@
 
 ## Paket 01 · umgesetzt
 
-Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02–18 bleiben offen.
+Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Paket 02 ist ebenfalls umgesetzt; Pakete 03–18 bleiben offen.
 
 - `selection-v2` entscheidet anhand des Datenpräfixes bis zum Entscheidungstag. Spätere Kurse werden erst für die Auswertung gelesen.
 - Fehlender späterer Einstiegskurs, ungültige spätere OHLC und fehlende spätere SPY-Sitzungen ändern keine damalige Auswahl. Unbekannte Outcomes bleiben `null`; kein Ersatzkandidat, kein nachträglicher Cash-Trade.
@@ -11,6 +11,16 @@ Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gem
 - Neun Testsuiten, Build und Artefaktprüfung bestanden. Details und Abnahmefälle: [SELECTION-V2.md](SELECTION-V2.md).
 
 Dies korrigiert den Auswahlfehler, belegt aber keine Prognosegüte. Historische Vintages, Rohkursausführung und Kostenfreigaben fehlen weiterhin. Keine Site-Veröffentlichung.
+
+## Paket 02 · umgesetzt
+
+Ausgangspunkt: `main`, `eb21ca4c9fd52163e612765464815b61a1e1a102`.
+
+- `execution-v3` nimmt das bekannte Open am Intraday-Zielverkaufstag in die obere MAE-Grenze auf. Der Abnahmefall liefert bei Nullkosten −15 % bis −10 %.
+- `data-v3`: Research und archivierte Rohkurssimulation verwenden denselben Adapter für Metadaten, OHLC, Duplikate und Börsensitzungen. Doppelte Tage werden dauerhaft ausgeschlossen; auch ungültige zweite Zeilen zählen als Duplikate.
+- Rohdatendefekte sperren die API-Simulation vor der Ausführung. Archivierte Szenarien verwenden ihren letzten abgeschlossenen Datentag als Ende; aktuelle Research-Freigabe bleibt streng auf den heutigen Datenstand bezogen.
+- Maßnahmenabdeckung und historische Verfügbarkeit werden nicht hochgestuft; Client-Overrides bleiben unwirksam. Referenz unverändert.
+- Alle neun Testsuiten, Build und Artefaktprüfung bestanden. Abnahme und Grenzen: [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md).
 
 ## Produktziel
 Research für eine eingegebene US-Aktien-Watchlist und maximal 20 Handelstage. Einstieg nächstes reguläres Open, Einstiegstag=Tag1, +5 % Preisziel, Tag20-Close als Zeitausstieg, kein Stop-Loss. Kein gesicherter Profit, keine Netto-Kaufempfehlung, keine Orderausführung. Schrittweise Umsetzung; folgende Planung ist keine automatische Beauftragung.
@@ -23,8 +33,8 @@ Research für eine eingegebene US-Aktien-Watchlist und maximal 20 Handelstage. E
 | Aktiendetails | verständliche Kursbegründung, historische Chancen, experimentelle Verlustausgänge, Risiken, ausgewählte Kalendertermine, virtuelle Vormerkungen | Historische Häufigkeiten nicht als Prognosewahrscheinlichkeiten kalibriert |
 | Einstellungen & Methodik | Kostenprofile, Ausführung, Datenprüfung, Alt/Neu-Vergleich, alte Rückprüfung, Formeln und To-dos | Details aufklappbar; bestehende Funktionen erhalten |
 | reference-v1 | eingefrorener Kern, Parameter, Hash und synthetische Regression | Ranking weiter alter bereinigter Vergleich ohne Kosten |
-| data-v2 | US-Kalender 2021–2027, Zeitzonen, Qualitätsprüfung, getrennte Kursarten/Maßnahmen, R2-Snapshots | 2021–2024 historisch nicht vollständig kalenderverifiziert; Vintages/Maßnahmenabdeckung fehlen |
-| execution-v2 | Rohkurs-Engine, Kosten, Gaps/Limits, Splits, Dividenden, Tageskurven, Drawdown, Exkursionen | Synthetisch geprüft; reale Netto-/Drawdown-Ergebnisse gesperrt |
+| data-v3 | US-Kalender 2021–2027, Zeitzonen, Qualitätsprüfung, getrennte Kursarten/Maßnahmen, R2-Snapshots | 2021–2024 historisch nicht vollständig kalenderverifiziert; Vintages/Maßnahmenabdeckung fehlen |
+| execution-v3 | Rohkurs-Engine, Kosten, Gaps/Limits, Splits, Dividenden, Tageskurven, Drawdown, Exkursionen | Synthetisch geprüft; reale Netto-/Drawdown-Ergebnisse gesperrt |
 | features-v2 | Trainingsskalierung, Korrelationsdistanz, Trainingsgrenze, Gewichte, Fallqualität, bedingter Block-Bootstrap | Experimentelle Proxy-Schätzung, noch kein zeitlich getrennter Nachweis; Ranking unverändert |
 | Brokerpreise | TR Best-/Direktpreis, IBKR, CapTrader, LYNX; Quellen und Prüfstand | Heutige Basispreise, keine historischen Tarifstände; EUR nicht als USD verrechnet |
 | Kalender | BLS/Fed/Earnings mit Quellenstatus und Ersatzstand; Punkte je Termin | Keine Modellwirkung; Unternehmenszugriff bisher gesperrt, BLS403; 35 Kalendertage statt exaktem Horizont |
@@ -57,7 +67,7 @@ Watchlistwechsel entfernt alte Kurs-/Ranking-/Detail-/Benchmark-/Backtestwerte u
 - Veröffentlichungsstände/Vintages und vollständige Maßnahmen inkl. weiterer Kapitalmaßnahmen sowie Dividenden-Zahlungstage beschaffen oder die Einschränkung bewusst beibehalten.
 - Historisches Universum/Delistings: heutige kleine Tech-Watchlist rückwirkend ist selektiv.
 - Alter `walkForward()` filtert vor Auswahl auf verfügbare spätere Outcomes; mögliche Hindsight-/Availability-Verzerrung separat beheben und prüfen. In diesem UI-Schritt unverändert.
-- Einheitlicher Ausführungs-/Outcomepfad für Labels, neue Schätzung und täglichen Strategietest fehlt; derzeit Proxys über `simulateTarget()`, separater execution-v2-Kern.
+- Einheitlicher Ausführungs-/Outcomepfad für Labels, neue Schätzung und täglichen Strategietest fehlt; derzeit Proxys über `simulateTarget()`, separater execution-v3-Kern.
 - Vollständige Experimentmanifeste (Snapshotzuordnung, Modellhash, Zeitpunkt, Parameter, Ergebnis) und Replay ergänzen.
 
 ### P1 – Validierung und Auswahl
