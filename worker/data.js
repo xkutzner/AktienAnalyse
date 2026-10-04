@@ -1,5 +1,5 @@
-// data-v3: daily regular-session calendars; no inferred prices or corporate actions.
-export const DATA_VERSION='data-v3';
+// data-v4: preserve volume; prefix-only experimental risk with explicit price/volume bases.
+export const DATA_VERSION='data-v4';
 const SUPPORTED=new Set(['XNAS','XNGS','XNMS','XNCM','XNYS','ARCX','XASE']);
 const CALENDAR_SOURCE='https://www.nyse.com/trade/hours-calendars';
 export function localParts(now,zone='America/New_York'){
@@ -44,7 +44,7 @@ export function adaptPrices(payload,adjust,now=new Date()){
   // Count duplicates before OHLC validation; never let a later row restore a day.
   const duplicate=seen.has(day);seen.add(day);
   if(duplicate){duplicates++;map.set(day,null);}
-  const bar={date:day,open:Number(row.open),high:Number(row.high),low:Number(row.low),close:Number(row.close),halted:row.halted===true?true:null};
+  const bar={date:day,open:Number(row.open),high:Number(row.high),low:Number(row.low),close:Number(row.close),volume:row.volume!==null&&row.volume!==undefined&&String(row.volume).trim()!==''&&Number.isFinite(Number(row.volume))&&Number(row.volume)>=0?Number(row.volume):null,halted:row.halted===true?true:null};
   if(![bar.open,bar.high,bar.low,bar.close].every(v=>Number.isFinite(v)&&v>0)||bar.high<Math.max(bar.open,bar.close,bar.low)||bar.low>Math.min(bar.open,bar.close,bar.high)){invalid++;continue}
   if(!duplicate)map.set(day,bar);
  }
@@ -144,4 +144,41 @@ export function validateTradePlan(plan,decisionBar){
  if(!plan||plan.referenceClose!==decisionBar?.close||plan.decisionDate!==decisionBar?.date)return false;
  const canonical=createTradePlan(plan);
  return canonical.status==='experimental'&&Object.keys(canonical).every(key=>JSON.stringify(canonical[key])===JSON.stringify(plan[key]))&&Object.keys(plan).every(key=>Object.hasOwn(canonical,key));
+}
+
+// This audit is a retrospective known-prefix calculation, not provider PIT qualification.
+export const RISK_VERSION='risk-prefix-v1';
+export function riskAt(bars,decisionIndex,{priceBasis='adjusted',volumeBasis='unknown',currency='USD',mic=null,actions=null,asOf=null,lookback=20}={}){
+ const unknown=reason=>({status:'unknown',value:null,reason});
+ const result={version:RISK_VERSION,status:'experimental',thresholdsApplied:false,netApproved:false,pointInTimeVerified:false,decisionDate:bars[decisionIndex]?.date||null,priceBasis,volumeBasis,lookback,
+  averageDailyTradedValue:unknown('Rohpreis und Rohvolumen derselben Sitzung erforderlich'),openingGaps:unknown('Unzureichendes bekanntes Präfix'),downsideMeasure:unknown('Unzureichendes bekanntes Präfix')};
+ if(!Number.isInteger(decisionIndex)||decisionIndex<lookback||!Number.isInteger(lookback)||lookback<2||lookback>1000||!['raw','adjusted'].includes(priceBasis))return result;
+ const prefix=bars.slice(decisionIndex-lookback,decisionIndex+1);
+ if(prefix.length!==lookback+1||prefix.some(b=>!b||b.missing||!session(b.date,mic)?.open||![b.open,b.close].every(v=>Number.isFinite(v)&&v>0)))return result;
+ for(let i=1;i<prefix.length;i++){let cursor=new Date(prefix[i-1].date+'T12:00:00Z');cursor.setUTCDate(cursor.getUTCDate()+1);while(session(iso(cursor),mic)?.open===false)cursor.setUTCDate(cursor.getUTCDate()+1);if(!session(iso(cursor),mic)?.open||iso(cursor)!==prefix[i].date)return result;}
+ const window=prefix.slice(1),start=prefix[0].date,end=prefix.at(-1).date;
+ if(priceBasis==='raw'&&(!Number.isFinite(Date.parse(asOf))||!(lastCompleted(new Date(asOf),mic)?.date>=end)))return result;
+ if(priceBasis==='raw'&&volumeBasis==='raw'&&currency==='USD'&&window.every(b=>Number.isFinite(b.volume)&&b.volume>=0&&Number.isFinite(b.close*b.volume))&&Number.isFinite(window.reduce((sum,b)=>sum+b.close*b.volume,0)))result.averageDailyTradedValue={status:'known',value:window.reduce((sum,b)=>sum+b.close*b.volume,0)/lookback,currency:'USD',basis:'raw-close-times-raw-volume',method:'close-times-volume-proxy-not-VWAP',sessions:lookback};
+ // An empty ledger is never evidence of absence. Coverage must cover the whole prefix
+ // and have been available by the supplied decision time; all relevant actions too.
+ const coverage=actions?.coverage;
+ const qualified=currency==='USD'&&actions?.coverageVerified===true&&actions?.pointInTimeVerified===true&&Array.isArray(actions.splits)&&Array.isArray(actions.dividends)&&actions.otherActions?.status==='confirmed-none'&&session(coverage?.from,mic)?.open&&session(coverage?.to,mic)?.open&&coverage.from<=start&&coverage.to>=end&&Number.isFinite(Date.parse(asOf))&&lastCompleted(new Date(asOf),mic)?.date>=end&&Number.isFinite(Date.parse(coverage.availableAt))&&Date.parse(coverage.availableAt)<=Date.parse(asOf);
+ const relevant=(rows,key)=>rows.filter(a=>a[key]>=start&&a[key]<=end);
+ const splits=qualified?relevant(actions.splits,'effectiveDate'):[],dividends=qualified?relevant(actions.dividends,'exDate'):[];
+ const validActions=qualified&&actions.splits.every(a=>session(a.effectiveDate,mic)?.open&&Number.isFinite(a.priceFactor)&&a.priceFactor>0)&&actions.dividends.every(a=>session(a.exDate,mic)?.open&&a.currency===currency&&Number.isFinite(a.amount)&&a.amount>=0)&&splits.every(a=>Number.isFinite(a.priceFactor)&&a.priceFactor>0&&Number.isFinite(Date.parse(a.knownAt))&&Date.parse(a.knownAt)<=Date.parse(asOf))&&dividends.every(a=>Number.isFinite(a.amount)&&a.amount>=0&&Number.isFinite(Date.parse(a.knownAt))&&Date.parse(a.knownAt)<=Date.parse(asOf));
+ if(priceBasis==='raw'&&!validActions){result.openingGaps=unknown('Qualifizierte verfügbare Kapitalmaßnahmenabdeckung fehlt');result.downsideMeasure=unknown('Rohkursverlust ohne Maßnahmenabdeckung nicht wirtschaftlich interpretierbar');return result;}
+ const gaps=[],returns=[];
+ for(let i=1;i<prefix.length;i++){
+  const bar=prefix[i],previous=prefix[i-1];
+  const factor=priceBasis==='raw'?splits.filter(a=>a.effectiveDate===bar.date).reduce((f,a)=>f*a.priceFactor,1):1;
+  const dividend=priceBasis==='raw'?dividends.filter(a=>a.exDate===bar.date).reduce((sum,a)=>sum+a.amount,0):0;
+  const denominator=previous.close*factor-dividend;
+  if(!(denominator>0))return result;
+  gaps.push(bar.open/denominator-1);returns.push(bar.close/denominator-1);
+ }
+ if([...gaps,...returns].some(v=>!Number.isFinite(v))||!Number.isFinite(returns.reduce((sum,r)=>sum+Math.min(r,0)**2,0)))return result;
+ const basis=priceBasis==='raw'?'action-normalized-raw-price-return':'provider-adjusted-price-return-proxy';
+ result.openingGaps={status:'known',value:Math.min(...gaps),mean:gaps.reduce((a,b)=>a+b,0)/lookback,observations:gaps,sessions:lookback,basis,method:'minimum-opening-gap'};
+ result.downsideMeasure={status:'known',value:Math.sqrt(returns.reduce((sum,r)=>sum+Math.min(r,0)**2,0)/lookback),sessions:lookback,basis,method:'daily-downside-deviation-zero-target',annualized:false};
+ return result;
 }

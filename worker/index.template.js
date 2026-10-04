@@ -2,7 +2,7 @@ import {CAPABILITY_VERSION, dataCapabilities} from "./capabilities.js";
 import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
 const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
-import {createTradePlan,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
+import {riskAt, RISK_VERSION, createTradePlan,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
 import {simulateTrade, executionLabel, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
@@ -143,7 +143,9 @@ const worker = {
       const period={symbol,start_date:'2021-01-01',end_date:new Date().toISOString().slice(0,10)};
       const [indicators,execution,splits,dividends]=await Promise.all([loadPrices(symbol,env,'all'),loadPrices(symbol,env,'none'),providerData('splits',period,env),providerData('dividends',{...period,adjust:false},env)]);
       const actions=normalizeActions(splits,dividends);
-      return json({symbol,dataCapabilities:dataCapabilities([indicators,execution,splits,dividends]),dataVersion:DATA_VERSION,indicators,execution,actions,sources:{splits,dividends},strictBacktest:{status:'blocked',reason:'Keine belegten historischen Veröffentlichungsstände und vollständigen Kapitalmaßnahmendaten'},archiveStatus:[indicators,execution,splits,dividends].every(r=>r.archived)?'saved':'unavailable'},200,{'cache-control':'no-store'});
+      const riskBars=execution.quality?.usable?execution.quality.sessionBars:[];
+      const rawRisk=riskAt(riskBars,riskBars.length-1,{priceBasis:'raw',volumeBasis:'raw',currency:execution.currency,mic:execution.quality?.meta?.mic_code,asOf:execution.normalizationAt,actions});
+      return json({symbol,rawRisk,dataCapabilities:dataCapabilities([indicators,execution,splits,dividends]),dataVersion:DATA_VERSION,indicators,execution,actions,sources:{splits,dividends},strictBacktest:{status:'blocked',reason:'Keine belegten historischen Veröffentlichungsstände und vollständigen Kapitalmaßnahmendaten'},archiveStatus:[indicators,execution,splits,dividends].every(r=>r.archived)?'saved':'unavailable'},200,{'cache-control':'no-store'});
     }
     if (url.pathname === "/api/snapshot") {
       const id=url.searchParams.get('id')||'';
@@ -218,7 +220,7 @@ async function getResearch(url, env, replayDownloads=null) {
       errors.push({ symbol, message: "Zu wenig zusammenhängende Kursgeschichte für das 20-Tage-Modell." });
       continue;
     }
-    series.push({ symbol, bars: aligned, current,qualityUsable:downloaded.quality?.usable });
+    series.push({ symbol, bars: aligned, current,mic:downloaded.quality.meta.mic_code,qualityUsable:downloaded.quality?.usable });
   }
   if (!series.length) return finish({ ...context,analysisStatus:"unknown",provider: "Twelve Data", stocks: [], errors, backtest, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
 
@@ -231,7 +233,7 @@ async function getResearch(url, env, replayDownloads=null) {
     const options={marketUp:marketFeatures[currentIndex]?.r20>=0};
     const newAnalogs={proxy:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'proxy'}),net:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'net'})};
     return { ...stock.current, symbol: stock.symbol, close: stock.bars[currentIndex]?.close,
-      asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, analysisStatus:candidateStatus(forecast),resultType:'historical',expectedNetReturn:null,returnMetrics:{historicalStrategyMean:forecast.expectedReturn,stockAt20:null,strategyNet:null,capitalWindowNet:null}, historyBars: stock.bars.filter(Boolean).length };
+      risk: riskAt(stock.bars,currentIndex,{priceBasis:'adjusted',volumeBasis:'unknown',mic:stock.mic}), asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, analysisStatus:candidateStatus(forecast),resultType:'historical',expectedNetReturn:null,returnMetrics:{historicalStrategyMean:forecast.expectedReturn,stockAt20:null,strategyNet:null,capitalWindowNet:null}, historyBars: stock.bars.filter(Boolean).length };
   });
   currentForecasts.sort((a, b) =>
     (b.expectedReturn ?? -Infinity) - (a.expectedReturn ?? -Infinity) ||
@@ -244,6 +246,7 @@ async function getResearch(url, env, replayDownloads=null) {
     provider: "Twelve Data",
     asOf: dates[currentIndex],
     benchmark: { symbol: "SPY", close: marketBars[currentIndex]?.close, r20: marketNow.r20, r60: marketNow.r60 },
+    riskModel:{version:RISK_VERSION,status:'experimental',thresholdsApplied:false,rankingChanged:false},
     comparisonModel:{version:ANALOGUE_VERSION,parameters:ANALOGUE_PARAMETERS,rankingChanged:false,outOfSampleVerified:false},
     model: { version: "reference-v1", target: TARGET, horizon: HORIZON, minAnalogs: MIN_ANALOGS,
       factors: ["20-Tage-Momentum", "60-Tage-Momentum", "relative Stärke gegen SPY", "Abstand zum 50-Tage-Mittel", "Volatilität"] },
