@@ -1,5 +1,7 @@
+import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
+const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
-import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, DATA_VERSION } from "./data.js";
+import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
 import {simulateTrade, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
@@ -8,10 +10,69 @@ const TARGET = 0.05;
 const HISTORY_SIZE = 1300;
 const MIN_ANALOGS = 12;
 
-export default {
-  async fetch(request, env) {
+const worker = {
+  async fetch(request, env, ctx, replayMode=null) {
     const url = new URL(request.url);
     if(url.pathname==="/api/contract")return request.method==="GET"?json(ANALYSIS_CONTRACT):json({message:"Nur GET erlaubt"},405);
+    if(url.pathname==='/api/protocol')return request.method==='GET'?json(EVALUATION_PROTOCOL):json({message:'Nur GET erlaubt'},405);
+    if(url.pathname==='/api/experiment'){
+     if(!env.BUCKET)return json({status:'unknown',message:'Archiv fehlt'},503);
+     if(request.method==='GET'){
+      const id=url.searchParams.get('id')||'';
+      if(!/^[a-f0-9-]{36}$/.test(id))return json({message:'Ungültige Ereignis-ID'},400);
+      const object=await env.BUCKET.get('experiments/'+id+'.json');
+      return object?new Response(await object.text(),{headers:{'content-type':'application/json','cache-control':'no-store'}}):json({message:'Ereignis fehlt'},404);
+     }
+     if(request.method!=='POST')return json({message:'Nur GET/POST erlaubt'},405);
+     try{
+      if(!SOURCE_COMMIT)return json({status:'unknown',message:'Quellcommit fehlt'},409);
+      const input=await request.json();
+      if(!['registered','completed','rejected','failed'].includes(input.status)||typeof input.model!=='string'||input.model.length>100||!input.parameters||typeof input.parameters!=='object'||Array.isArray(input.parameters)||typeof input.reason!=='string'||input.reason.length>2000)return json({message:'Status, Modell, Parameter und Begründung erforderlich'},400);
+      let parent=null;
+      if(input.status!=='registered'){
+       if(!/^[a-f0-9-]{36}$/.test(input.registeredId||''))return json({message:'Registrierung erforderlich'},400);
+       const object=await env.BUCKET.get('experiments/'+input.registeredId+'.json');
+       if(!object)return json({message:'Registrierung fehlt'},404);
+       parent=JSON.parse(await object.text());
+       if(parent.status!=='registered'||await digest(parent.parameters)!==await digest(input.parameters)||parent.model!==input.model)return json({message:'Modell oder Parameter weichen von Registrierung ab'},409);
+      }
+      const event={eventId:crypto.randomUUID(),registeredId:parent?.eventId||null,recordedAt:new Date().toISOString(),sourceCommit:SOURCE_COMMIT,protocol:EVALUATION_PROTOCOL,status:input.status,model:input.model,parameters:input.parameters,reason:input.reason,resultAnalysisId:input.analysisId||null};
+      if(event.resultAnalysisId){
+       if(!/^[a-f0-9-]{36}$/.test(event.resultAnalysisId)||!await env.BUCKET.get('analyses/'+event.resultAnalysisId+'.json'))return json({message:'Ergebnisanalyse fehlt'},400);
+      }
+      const saved=await env.BUCKET.put('experiments/'+event.eventId+'.json',JSON.stringify(event),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});
+      return saved===null?json({message:'Unveränderliches Ereignis existiert'},409):json(event,201,{'cache-control':'no-store'});
+     }catch{return json({message:'Versuchsereignis nicht speicherbar'},400)}
+    }
+    if(url.pathname==='/api/analysis'||url.pathname==='/api/replay'){
+      if(request.method!=='GET')return json({message:'Nur GET erlaubt'},405);
+      const id=url.searchParams.get('id')||'';
+      if(!/^[a-f0-9-]{36}$/.test(id))return json({message:'Ungültige Analyse-ID'},400);
+      if(!env.BUCKET)return json({status:'unknown',message:'Archiv nicht verfügbar'},503);
+      try{
+       const object=await env.BUCKET.get('analyses/'+id+'.json');
+       if(!object)return json({status:'unknown',message:'Analyse fehlt'},404);
+       const record=JSON.parse(await object.text());
+       if(await digest({manifest:record.manifest,input:record.input,result:record.result})!==record.recordHash||await digest(record.result)!==record.manifest.resultHash)return json({status:'unknown',message:'Analyseintegrität verletzt'},409);
+       if(url.pathname==='/api/analysis')return json(record,200,{'cache-control':'no-store'});
+       if(!SOURCE_COMMIT||record.manifest.sourceCommit!==SOURCE_COMMIT||record.manifest.version!==REPRO_VERSION)return json({status:'unknown',message:'Replay benötigt exakt den archivierten Quellcommit'},409);
+       const downloads=[];
+       for(const item of record.input.downloads){
+        const snapshot=await env.BUCKET.get('snapshots/'+item.snapshotId+'.json');
+        if(!snapshot)return json({status:'unknown',message:'Snapshot fehlt'},409);
+        const saved=JSON.parse(await snapshot.text());
+        if(await digest(saved)!==record.manifest.snapshotHashes.find(entry=>entry.id===item.snapshotId)?.hash)return json({status:'unknown',message:'Snapshotintegrität verletzt'},409);
+        if(record.input.kind==='simulation')continue;
+        const quality=Array.isArray(saved.payload?.values)?validatePrices(saved.payload,'all',new Date(item.normalizationAt)):null;
+        const error=saved.error?{symbol:item.symbol,message:saved.error}:!quality?{symbol:item.symbol,message:'Keine Kursreihe'}:!quality.usable?{symbol:item.symbol,message:quality.issues.join(' · ')||'Datenstand unbekannt'}:null;
+        const row={symbol:item.symbol,normalizationAt:item.normalizationAt,snapshotId:item.snapshotId,archived:true,provenance:saved.provenance,...(quality?{bars:quality.bars,pricePayload:saved.payload,quality,currency:saved.payload.meta?.currency}:{}),...(error?{error}:{} )};
+        downloads.push(row);
+       }
+       const response=record.input.kind==='simulation'?await worker.fetch(new Request('https://archive.local/api/simulation',{method:'POST',body:JSON.stringify(record.input.request),headers:{'content-type':'application/json'}}),env,undefined,{normalizationAt:record.input.normalizationAt}):await getResearch(new URL('https://archive.local/api/stocks'+record.input.query),{},downloads);
+       const result=await response.json(),hash=await digest(result);
+       return json({status:hash===record.manifest.resultHash?'identical':'mismatch',analysisId:id,resultHash:hash,manifest:record.manifest,result},hash===record.manifest.resultHash?200:409,{'cache-control':'no-store'});
+      }catch{return json({status:'unknown',message:'Archiv nicht lesbar'},409)}
+    }
     if (url.pathname === "/api/simulation") {
       if(request.method!=="POST")return json({message:"Nur POST erlaubt"},405);
       try {
@@ -29,13 +90,15 @@ export default {
         if(records.some(record=>record.provenance.parameters.symbol!==raw.provenance.parameters.symbol))return json({message:"Snapshots gehören nicht zur selben Aktie"},400);
         const actions=normalizeActions(splits,dividends);
         // Adapter cannot assert historical vintages or full action coverage. No client override.
-        const quality=adaptRawSnapshot(raw.payload);
+        const normalizationAt=replayMode?.normalizationAt||new Date().toISOString();
+        const quality=adaptRawSnapshot(raw.payload,new Date(normalizationAt));
+        const finishSimulation=async result=>json(replayMode?result:await saveAnalysis(result,url,records.map(record=>({symbol:record.provenance.parameters.symbol,snapshotId:record.snapshotId,provenance:record.provenance,archived:true,normalizationAt})),env,SOURCE_COMMIT,{kind:'simulation',request:input,normalizationAt}),200,{'cache-control':'no-store'});
         const {bars:normalized,sessionBars,...dataQuality}=quality;
-        if(!quality.usable)return json({...context,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:'unknown',returnMetrics:{stockAt20:null,strategyNet:null,capitalWindowNet:null},version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
+        if(!quality.usable)return finishSimulation({...context,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:'unknown',returnMetrics:{stockAt20:null,strategyNet:null,capitalWindowNet:null},version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
         const bars=sessionBars;
         const index=input.decisionDate?bars.findIndex(bar=>bar.date===input.decisionDate):Math.max(0,bars.length-21);
         const result=simulateTrade(bars,index,actions,{costs,capital,horizon:ANALYSIS_CONTRACT.horizon,strict:true,brokerProfile:input.brokerProfile});
-        return json({...context,...result,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:result.status==='blocked'?'unknown':'experimental',returnMetrics:simulationReturnMetrics(result,capital),dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
+        return finishSimulation({...context,...result,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:result.status==='blocked'?'unknown':'experimental',returnMetrics:simulationReturnMetrics(result,capital),dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
       } catch {return json({message:"Ungültige Eingabe oder Archiv nicht lesbar"},400)}
     }
     if (url.pathname === "/api/data") {
@@ -76,9 +139,11 @@ export default {
   },
 };
 
-async function getResearch(url, env) {
+export default worker;
+
+async function getResearch(url, env, replayDownloads=null) {
   const apiKey = env.TWELVEDATA_API_KEY;
-  if (!apiKey) {
+  if (!apiKey && !replayDownloads) {
     return json({ error: "api_key_missing", message: "Das Site-Secret TWELVEDATA_API_KEY ist nicht gesetzt." }, 503);
   }
 
@@ -93,17 +158,18 @@ async function getResearch(url, env) {
   let context;
   try{context=analysisContext(url.searchParams.has('capital')?Number(url.searchParams.get('capital')):undefined,DEFAULT_COSTS)}catch(error){return json({message:error.message},400)}
   const requested = [...symbols, "SPY"];
-  const downloads = await Promise.all(requested.map((symbol) => fetchHistory(symbol, env)));
+  const downloads = replayDownloads || await Promise.all(requested.map((symbol) => fetchHistory(symbol, env)));
+  const finish=async (result,status=200)=>json(replayDownloads?result:await saveAnalysis(result,url,downloads,env,SOURCE_COMMIT),status,{"cache-control":"no-store"});
   const bySymbol = Object.fromEntries(downloads.filter((item) => item.bars).map((item) => [item.symbol, item]));
   const errors = downloads.filter((item) => item.error).map((item) => item.error);
   const backtest = historicalBacktest(downloads, symbols);
   const benchmark = bySymbol.SPY;
   if (!benchmark || !benchmark.quality?.usable || benchmark.bars.length < 100) {
-    return json({ ...context,analysisStatus:"unknown",error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
+    return finish({ ...context,analysisStatus:"unknown",error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
   }
 
   // Expected exchange sessions form the spine: missing SPY rows must not compress time.
-  const dates=[];const cursor=new Date(benchmark.bars[0].date+'T12:00:00Z');
+  const dates=[];const cursor=new Date('2021-01-04T12:00:00Z');
   while(cursor.toISOString().slice(0,10)<=benchmark.quality.expectedLastSession){const day=cursor.toISOString().slice(0,10);if(session(day,benchmark.quality.meta.mic_code)?.open)dates.push(day);cursor.setUTCDate(cursor.getUTCDate()+1)}
   const marketMap=new Map(benchmark.bars.map(bar=>[bar.date,bar]));
   const marketBars=dates.map(day=>marketMap.get(day)||null);
@@ -121,7 +187,7 @@ async function getResearch(url, env) {
     }
     series.push({ symbol, bars: aligned, current,qualityUsable:downloaded.quality?.usable });
   }
-  if (!series.length) return json({ ...context,analysisStatus:"unknown",provider: "Twelve Data", stocks: [], errors, backtest, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
+  if (!series.length) return finish({ ...context,analysisStatus:"unknown",provider: "Twelve Data", stocks: [], errors, backtest, dataQuality:downloads.map(item=>({symbol:item.symbol,quality:item.quality,provenance:item.provenance,archived:item.archived})) }, 200);
 
   const currentIndex = dates.length - 1;
   const records = Object.fromEntries(series.map((stock) => [stock.symbol, buildRecords(stock.bars, marketBars, marketFeatures)]));
@@ -140,7 +206,7 @@ async function getResearch(url, env) {
     b.score - a.score);
 
   const marketNow = marketFeatures[currentIndex] || {};
-  return json({
+  return finish({
     ...context,analysisStatus:watchlistStatus(symbols.map(symbol=>currentForecasts.find(stock=>stock.symbol===symbol)||{analysisStatus:"unknown"})),
     provider: "Twelve Data",
     asOf: dates[currentIndex],
@@ -170,7 +236,7 @@ async function fetchHistory(symbol, env) {
 function historicalBacktest(downloads, symbols){
  const benchmark=downloads.find(item=>item.symbol==='SPY');
  if(!benchmark?.bars?.length||!benchmark.quality?.expectedLastSession)return null;
- const dates=[],cursor=new Date(benchmark.bars[0].date+'T12:00:00Z');
+ const dates=[],cursor=new Date('2021-01-04T12:00:00Z');
  while(cursor.toISOString().slice(0,10)<=benchmark.quality.expectedLastSession){const day=cursor.toISOString().slice(0,10);if(session(day,benchmark.quality.meta.mic_code)?.open)dates.push(day);cursor.setUTCDate(cursor.getUTCDate()+1)}
  const align=bars=>{const map=new Map(bars.map(bar=>[bar.date,bar]));return dates.map(day=>map.get(day)||null)};
  const marketBars=align(benchmark.bars),marketFeatures=dates.map((_,i)=>featureAt(marketBars,marketBars,i));
@@ -262,7 +328,7 @@ function prefixUsable(bars,index){
  return true;
 }
 function walkForward(series, records, marketBars, marketFeatures, dates) {
-  const testStart = Math.max(260, dates.length - 504);
+  const testStart = 260; // Fixed session-grid anchor; provider window never resets phase.
   const windows = [];
   for (let index = testStart; index + HORIZON < dates.length; index += HORIZON) {
     // Finish the decision before reading any evaluation-window prices.
@@ -275,12 +341,13 @@ function walkForward(series, records, marketBars, marketFeatures, dates) {
     }).filter(row=>row&&row.sampleCount>=MIN_ANALOGS&&Number.isFinite(row.expectedReturn))
       .sort((a,b)=>b.expectedReturn-a.expectedReturn||b.probabilityTarget-a.probabilityTarget||b.features.score-a.features.score);
     const pick=ranked[0]?.expectedReturn>0?ranked[0]:null;
+    const assessable=ranked.length>0;
     const outcome=pick?simulateTarget(series.find(stock=>stock.symbol===pick.symbol).bars,index):null;
     const marketOutcome=simulateTarget(marketBars,index);
     windows.push({decisionDate:dates[index],date:dates[index+1],universe:universe.map(stock=>stock.symbol),candidates:ranked,
       symbol:pick?.symbol||null,expectedReturn:pick?.expectedReturn??null,expectedTargetProbability:pick?.probabilityTarget??null,
-      outcomeStatus:pick?(outcome?'known':'unknown'):'cash',realizedReturn:pick?(outcome?.tradeReturn??null):0,
-      targetHit:pick?(outcome?.targetHit??null):false,averageAdverseMove:pick?(outcome?.adverseMove??null):0,
+      outcomeStatus:pick?(outcome?'known':'unknown'):assessable?'cash':'unknown',realizedReturn:pick?(outcome?.tradeReturn??null):assessable?0:null,
+      targetHit:pick?(outcome?.targetHit??null):assessable?false:null,averageAdverseMove:pick?(outcome?.adverseMove??null):assessable?0:null,
       benchmarkStatus:marketOutcome?'known':'unknown',benchmarkReturn:marketOutcome?.tradeReturn??null,benchmarkTargetHit:marketOutcome?.targetHit??null});
   }
   const trades=windows.filter(row=>row.symbol),knownTrades=trades.filter(row=>row.outcomeStatus==='known');
@@ -290,7 +357,7 @@ function walkForward(series, records, marketBars, marketFeatures, dates) {
   const unknownOutcomeCount=trades.length-knownTrades.length;
   return {version:'selection-v2',method:'Walk-forward, präfixbasierte Auswahl vor späterer Auswertung; nicht überlappende 20-Tage-Perioden',
     testFrom:windows[0]?.date||null,testTo:windows.at(-1)?.date||null,windows:windows.length,tradeCount:trades.length,
-    knownOutcomeCount:knownTrades.length,unknownOutcomeCount,cashCount:windows.length-trades.length,
+    knownOutcomeCount:knownTrades.length,unknownOutcomeCount,cashCount:windows.filter(row=>row.outcomeStatus==='cash').length,unknownDecisionCount:windows.filter(row=>!row.symbol&&row.outcomeStatus==='unknown').length,
     knownWindowCount:knownWindows.length,knownBenchmarkCount:knownBenchmark.length,unknownBenchmarkCount:windows.length-knownBenchmark.length,pairedWindowCount:paired.length,
     aggregateBasis:'Mittelwerte nur über bekannte Ergebnisse; Überschuss nur über paarweise bekannte Fenster. Unbekannt ist kein Cash und kein Nullertrag.',target:TARGET,
     averageReturnPerWindow:mean(knownWindows.map(row=>row.realizedReturn)),averageTradeReturn:mean(knownTrades.map(row=>row.realizedReturn)),
@@ -298,7 +365,7 @@ function walkForward(series, records, marketBars, marketFeatures, dates) {
     winRate:knownTrades.length?knownTrades.filter(row=>row.realizedReturn>0).length/knownTrades.length:null,
     averageAdverseMove:mean(knownTrades.map(row=>row.averageAdverseMove)),averageBenchmarkReturn:mean(knownBenchmark.map(row=>row.benchmarkReturn)),
     excessPerWindow:mean(paired.map(row=>row.realizedReturn-row.benchmarkReturn)),
-    maxDrawdown:unknownOutcomeCount?null:maxDrawdown(windows.map(row=>row.realizedReturn)),
+    maxDrawdown:windows.some(row=>row.outcomeStatus==='unknown')?null:maxDrawdown(windows.map(row=>row.realizedReturn)),
     minimumTrades:12,sufficientSample:knownTrades.length>=12,decisions:windows,recent:windows.slice(-10).reverse()};
 }
 
