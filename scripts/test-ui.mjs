@@ -91,3 +91,28 @@ for(const [id,value] of [['risk-max-loss','200'],['scenario-capital','12000'],['
  assert.equal(vm.runInContext('stocks.length',context),0);assert.equal(nodes['load-button'].disabled,false);assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);
 }
 console.log('Paket09 capital/cost/risk changes discard stale research and clear main-card values.');
+// Paket10: invalid input is recoverable by keyboard and has a linked error.
+for(const value of ['', 'SPY', 'AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, IBM', '<INVALID>']){
+ const count=requests.length;nodes.symbols.value=value;
+ await vm.runInContext('loadResearch()',context);
+ assert.equal(requests.length,count,'invalid watchlist must not fetch');
+ assert.equal(active.id,'symbols');assert.equal(nodes.symbols.getAttribute('aria-invalid'),'true');
+ assert.equal(nodes['symbols-error'].hidden,false);assert.match(nodes['symbols-error'].textContent,/1–7/);
+ assert.equal(nodes['view-analysis'].hidden,false);assert.equal(nodes['view-analysis'].getAttribute('aria-busy'),'false');
+ assert.equal(nodes['best-return'].textContent,'—');assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);
+}
+nodes.symbols.value='AAPL';await nodes.symbols.fire('input');
+assert.equal(nodes.symbols.getAttribute('aria-invalid'),'false');assert.equal(nodes['symbols-error'].hidden,true);
+assert.match(nodes.symbols.getAttribute('aria-describedby'),/symbols-error/);
+assert.equal(nodes.banner.getAttribute('aria-atomic'),'true');
+// All-negative historical observations must not produce a positive reference candidate.
+const negative=fixture(['AAPL']);negative.stocks[0].expectedReturn=-.03;negative.best=negative.stocks[0];
+const negativeLoad=vm.runInContext('loadResearch()',context);await respond(requests.shift(),negative);await negativeLoad;
+assert.equal(vm.runInContext('best',context),null);assert.equal(nodes['paper-button'].disabled,true);
+assert.match(nodes['candidate-cards'].innerHTML,/-3,0 %/);assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);
+// Incomplete stock/SPY coverage removes observations from every reachable selector.
+const missing=fixture(['AAPL']);missing.dataQuality.find(q=>q.symbol==='SPY').quality.usable=false;
+const missingLoad=vm.runInContext('loadResearch()',context);await respond(requests.shift(),missing);await missingLoad;
+assert.equal(vm.runInContext('stocks.length',context),0);assert.equal(nodes['best-return'].textContent,'—');
+assert.ok(!nodes['detail-symbol'].innerHTML.includes('AAPL'));assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);
+console.log('Paket10 Mock-DOM: invalid/empty watchlist focus and linked error, no invalid fetch, recovery, negative observations and missing benchmark coverage. Real browser/screenreader acceptance remains unavailable.');

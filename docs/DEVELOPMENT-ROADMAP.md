@@ -153,6 +153,8 @@ Eine verständliche Hauptansicht erstellen:
 
 ### 10 · Oberfläche und echte Leseintegration abnehmen
 
+**Stand:** Technische Zustands-/Fokusregressionen lokal umgesetzt, Review/Upload/Merge ausstehend. [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md) trennt PassedMock und unavailable. Echte Breiten-/Zoom-/Tastatur-/Screenreaderabnahme sowie autorisierter Provider-/Archiv-/Replay-Durchlauf bleiben offen; keine PassedReal-Behauptung.
+
 **Priorität:** P1 · **Abhängigkeit:** 09 · **Umfang:** mittel
 
 - 320/375/780px, Desktop, 200%-Zoom, Tastatur und Screenreader prüfen.

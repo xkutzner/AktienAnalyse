@@ -24,7 +24,7 @@ Details: [ANALYSIS-CARD.md](ANALYSIS-CARD.md), [EVENT-REGISTRY.md](EVENT-REGISTR
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 10 | In Umsetzung, eigener neuer Agentkontext | UI-Abnahme und echter Analyse-/Archiv-/Replay-Durchlauf |
+| 10 | Technische Mock-Abnahme umgesetzt; Review/Upload/Merge ausstehend | [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md); reale Browser-/Screenreader-/Providerabnahme offen |
 | 11 | Wartet auf 04–07 | Zeitlich getrennter Vergleich; qualifizierte Daten sind notwendig |
 | 12 | Wartet auf 08 und 11 | Drei Ergänzungsgruppen einzeln auf Mehrwert prüfen |
 | 13 | Wartet auf 11–12 | Höchstens ein zusätzlicher Renditeansatz |
