@@ -1,0 +1,17 @@
+# Paket 09 · Szenarien, Kein-Kauf-Regeln und Analysekarte
+
+Stand 04.10.2026 · Ausgangsmain `144111e65c18f1734a691de4af050ebb103b3fd9`.
+
+Die Hauptansicht benutzt `analysis-card-v1` aus dem gemeinsamen Analysevertrag, mit identischem Policycode in API und UI. Vier Statuslabels sind definiert: geeignet im geprüften Modus, experimentell beobachten, aktuell keine geeignete Aktie, nicht beurteilbar. Geprüft geeignet wird niemals ausgegeben; die Prognosefreigabe ist serverseitig unverändert false und kein Clientflag kann sie setzen.
+
+Qualifizierte Ausführungsdaten, vollständige Kosten, Liquiditätsnachweis, konfigurierte positive USD-Verlust-/Handelswertgrenzen ein plausibler qualifizierter experimenteller Rohpreisplan und plausible endliche Nettoszenarien sind Voraussetzung für eine experimentelle Entscheidung. Fehlende Voraussetzungen ergeben unknown, bekannte unterschrittene Liquiditätsgrenzen, überschrittenes Verlustbudget oder nichtpositives mittleres Nettoszenario noSuitable. Zwei kurze Gründe und alle Sperren stehen auf der Karte. Cash ist immer eine reguläre Alternative. Die optionalen Grenzfelder sind ausdrücklich eigene Szenarioinputs ohne vorbelegte Nutzerpräferenzen; sie qualifizieren keine Daten.
+
+Mittleres und ungünstiges Netto sowie Verlustschwere bleiben ohne Qualifikation unbekannt. Ein qualifizierter qualifiziert übergebener plausibler experimenteller Rohpreisplan ist separat darstellbar: Einstiegsbereich und unveränderte Deadline sowie indikative Stop-/Zielpreise am Rohschlussanker. Tatsächliche Trigger hängen vom modellierten Einstieg ab; Stopfüllung ist nicht garantiert. Der aktuelle Research verwendet adjusted Preise, unbekannte Volumenbasis und unbekannte PIT-Maßnahmen, daher Rohpreisplan, Netto und Liquidität unknown. Es werden keine zusätzlichen Providerrequests erzeugt.
+
+Die Karte ist auch bei unknown nutzbar: Datenstand, Kosten-/Ergebnisstatus, konkrete fehlende Voraussetzungen und historische Beobachtungen sind sichtbar. Historische Mittel/Quantile bleiben historische Vergleiche ohne Kosten; keine Zukunftsgarantie oder prognostische Wahrscheinlichkeit. Alte Rangliste und positive Referenzauswahl bleiben unverändert als aufklappbare Details. Es werden keine fiktiven Kandidaten erzeugt.
+
+Symbol-, Kapital-, Kosten- und Risikokonfigurationsänderungen invalidieren laufende relevante Requests; veraltete Antworten werden verworfen. Fehler und fehlende Konfiguration löschen Netto-/Risikowerte. Immutable Archiv/Replay, gespeicherte Zeiten und providerfreies Replay bleiben unverändert.
+
+Fünfzehn synthetische Suiten prüfen die bestehenden vierzehn Regressionen sowie gemeinsame Policy/API-UI-Parität, positive/negative Szenarien, Daten-/Kosten-/Liquiditäts-/Budgetgrenzen, kleine Stichprobe und immutable Freigabe. Mock-DOM prüft tatsächliche Kartenwerte und bekannte Plandetails. Keine echte Browser-/Providerabnahme oder empirische Nettoprognosegüte. Externe reale Nettofreigabe fehlt; drei Capability-Gates bleiben blocked. Paket10 und spätere Pakete werden nicht vorweggenommen. Neutralbuild SOURCE_COMMIT=null; der Orchestrator prüft den tatsächlichen Uploadhead separat.
+
+`analysisCard` ist die autoritative neue Produktkarte; `analysisStatus` bleibt der Legacyzustand des historischen Referenzvergleichs. Die Policy bindet Planentscheidung an den Karten-Datenstand und sperrt spätere Planverfügbarkeit; die Calendar-/PIT-Qualifikation selbst stammt aus den bestehenden Daten-/Tradeplankernen, die Policy allein bestätigt sie nicht.

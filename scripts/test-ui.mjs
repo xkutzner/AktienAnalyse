@@ -1,4 +1,5 @@
 // Full inline-script workflow harness. Explicit synthetic fixtures; no market/provider calls.
+import {createTradePlan} from '../worker/data.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -70,3 +71,23 @@ const luminance=hex=>{const rgb=hex.match(/[\da-f]{2}/g).map(x=>parseInt(x,16)/2
 for(const [fg,bg] of [['13212b','ffffff'],['4e606b','ffffff'],['005b73','ffffff'],['286437','ffffff'],['963c31','ffffff'],['bdf26e','101820'],['284858','f0f5f9'],['664600','fff4dc']]){const a=luminance(fg),b=luminance(bg);assert.ok((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5,'text contrast '+fg)}
 console.log('UI workflows checked: three areas, shared quality display gate, stale research/cost/audit/calendar responses, loading/error/empty reset, keyboard tabs and text contrast. Responsive CSS checked structurally; no browser rendering claim.');
 
+
+// Paket09: same synthetic qualification policy in main card; production research stays unknown.
+const cardPlan=createTradePlan({decisionDate:'2026-11-27',asOf:'2026-11-27T18:01:00Z',closeAvailableAt:'2026-11-27T18:00:30Z',mic:'XNAS',priceBasis:'raw',referenceClose:100});
+context.cardFixture={...stock('SYNTH'),asOf:cardPlan.asOf,evidence:{data:'qualified',costs:'qualified',liquidity:'qualified'},dailyValueUSD:1000000,net:{middle:.02,adverse:-.05,lossUSD:500},rawTradePlan:cardPlan};
+nodes['risk-max-loss'].value='1000';nodes['risk-min-liquidity'].value='100000';
+vm.runInContext('renderAnalysisCard(cardFixture)',context);
+assert.match(nodes['analysis-card'].innerHTML,/Experimentell beobachten/);assert.match(nodes['analysis-card'].innerHTML,/2026-12-28/);assert.ok(nodes['analysis-card'].innerHTML.includes(vm.runInContext('usd(95)',context)));
+nodes['risk-max-loss'].value='100';vm.runInContext('renderAnalysisCard(cardFixture)',context);assert.match(nodes['analysis-card'].innerHTML,/Aktuell keine geeignete Aktie/);
+context.cardFixture.evidence.costs='unknown';vm.runInContext('renderAnalysisCard(cardFixture)',context);assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);assert.match(nodes['analysis-card'].innerHTML,/2026-12-28/);
+nodes['risk-max-loss'].value='';vm.runInContext('renderAnalysisCard(cardFixture)',context);assert.match(nodes['analysis-card'].innerHTML,/nicht konfiguriert/);
+vm.runInContext("renderAnalysisCard({qualityUsable:true,sampleCount:20,expectedReturn:.02})",context);assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);assert.match(nodes['analysis-card'].innerHTML,/historische Beobachtungen/);
+console.log('Paket09 main-card policy rendering checked with explicit synthetic qualification, known plan, blocked costs and missing risk preferences.');
+// Configuration changes also cancel a research response that ignores abort.
+for(const [id,value] of [['risk-max-loss','200'],['scenario-capital','12000'],['entryFeeBps','30']]){
+ nodes.symbols.value='AAPL';const pendingResearch=vm.runInContext('loadResearch()',context),stale=requests.shift();
+ nodes[id].value=value;await nodes[id].fire('input');assert.equal(stale.options.signal.aborted,true);
+ await respond(stale,fixture(['AAPL']));await pendingResearch;
+ assert.equal(vm.runInContext('stocks.length',context),0);assert.equal(nodes['load-button'].disabled,false);assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);
+}
+console.log('Paket09 capital/cost/risk changes discard stale research and clear main-card values.');

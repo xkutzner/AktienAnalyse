@@ -5,7 +5,7 @@ const html=fs.readFileSync('app/index.html','utf8');
 const ids=['broker-comparison','broker-tariff','broker-mode','broker-name','broker-status','cost-summary','open-broker','tab-settings','cost-settings','entryFeeBps','exitFeeBps','entryFixedFee','exitFixedFee','entrySlippageBps','exitSlippageBps','entrySpreadBps','exitSpreadBps'];
 const nodes=Object.fromEntries(ids.map(id=>[id,{value:id==='broker-mode'?'default':'',disabled:false,textContent:'',addEventListener(){},focus(){},checkValidity(){return this.value!==''&&Number(this.value)>=0&&(!id.endsWith('Bps')||Number(this.value)<=1000)}}]));
 let stored,refreshes=0;
-const context=vm.createContext({el:id=>nodes[id],localStorage:{getItem:()=>null,setItem:(key,value)=>stored=JSON.parse(value)},refreshSimulation:()=>refreshes++,activateTab(){},safe:v=>String(v),Number,JSON,Object});
+const context=vm.createContext({el:id=>nodes[id],localStorage:{getItem:()=>null,setItem:(key,value)=>stored=JSON.parse(value)},refreshSimulation:()=>refreshes++,invalidateScenarioResearch(){},render(){},activateTab(){},safe:v=>String(v),Number,JSON,Object});
 vm.runInContext(html.slice(html.indexOf('    const UI_BROKER_PROFILES='),html.indexOf('    function showQuality(')),context);
 assert.equal(nodes.entryFeeBps.value,10);assert.equal(nodes.entrySlippageBps.disabled,true);
 nodes['broker-mode'].value='custom';nodes['broker-name'].value='Mein Tarif';nodes.entryFixedFee.value=2;

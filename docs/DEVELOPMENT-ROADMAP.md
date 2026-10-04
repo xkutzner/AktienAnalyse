@@ -137,6 +137,8 @@ Bei Bedarf als **08a** und **08b** getrennt beauftragen:
 
 ### 09 · Szenarien, Kein-Kauf-Regeln und Analysekarte
 
+Technisch implementiert: [ANALYSIS-CARD.md](ANALYSIS-CARD.md). Prüfung/Merge ausstehend; echte Daten-/Netto-/Browserabnahme und geprüfter Kaufstatus weiterhin gesperrt.
+
 **Priorität:** P1 · **Abhängigkeit:** 06–08 · **Umfang:** mittel
 
 Eine verständliche Hauptansicht erstellen:
