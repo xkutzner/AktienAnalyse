@@ -124,7 +124,7 @@ Technisch implementiert: [TRADE-PLAN.md](TRADE-PLAN.md). Upload/PR/Mergeprüfung
 
 ### 08 · Wenige grundlegende Risiko- und Ereignisdaten ergänzen
 
-**08a Stand:** Technisch lokal umgesetzt; Review/Upload/PR/Merge ausstehend. [RISK-FEATURES.md](RISK-FEATURES.md). Handelbarkeit/Gaps/Downside sind experimentelle Präfixaudits mit getrennten Preis-/Volumenbasen; reale PIT-/Maßnahmenabnahme und drei Capability-Gates bleiben blockiert. 08b bleibt offen.
+**08a Stand:** In main gemergt (`a704b67`, PR #8). [RISK-FEATURES.md](RISK-FEATURES.md). Handelbarkeit/Gaps/Downside sind experimentelle Präfixaudits mit getrennten Preis-/Volumenbasen; reale PIT-/Maßnahmenabnahme und drei Capability-Gates bleiben blockiert. 08b ist technisch lokal umgesetzt; Review/Upload/PR/Merge ausstehend. [EVENT-REGISTRY.md](EVENT-REGISTRY.md). Immutable Quellenbeobachtungen/Revisionsketten und exaktes Tag20-Fenster sind implementiert; reale bestätigte Unternehmensintegration und vollständige Abdeckung bleiben blockiert.
 
 **Priorität:** P1 · **Abhängigkeit:** 05–07 · **Umfang:** mittel pro Teilpaket
 

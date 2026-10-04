@@ -15,14 +15,14 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 07 | Versionierter Einstieg, experimenteller Stop und festes Kalenderenddatum | `2820c4a` / `3c100d9` · PR #7 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 16 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Ausführungsabnahme offen |
 | 08a | Volumen und präfixbasierter Handelswert-/Gap-/Downside-Audit | `c6c17b7` / `a704b67` · PR #8 | Vierzehn Suiten mit tatsächlichem Sourcecommit, 13 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
 
-Details: [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
+Details: [EVENT-REGISTRY.md](EVENT-REGISTRY.md), [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 08b | In Umsetzung, eigener neuer Agentkontext | Bestätigte Ereignisse, Verfügbarkeit und Änderungen |
+| 08b | Technisch lokal umgesetzt; Review/Upload/PR/Merge ausstehend | Quellengebundenes immutable Ereignisarchiv, unbekannte Unternehmensabdeckung, exaktes Tag20-Fenster; reale Integration blockiert |
 | 09 | Wartet auf 06–08 | Szenarien, Kein-Kauf-Regeln, Analysekarte |
 | 10 | Wartet auf 09 | UI-Abnahme und echter Analyse-/Archiv-/Replay-Durchlauf |
 | 11 | Wartet auf 04–07 | Zeitlich getrennter Vergleich; qualifizierte Daten sind notwendig |
@@ -39,6 +39,7 @@ Details: [RISK-FEATURES.md](RISK-FEATURES.md), [TRADE-PLAN.md](TRADE-PLAN.md), [
 - Archivierung/Replay sind technisch synthetisch geprüft; der tatsächliche Quellcommit ist bytegenau geprüft und im finalen Testbuild eingebettet; reale Provider-/Archivintegration bleibt offen. Bestehende Experimente sind nicht rückwirkend vorregistriert.
 - Research bleibt experimentell auf heute abgerufener bereinigter Historie. Historische Veröffentlichungsstände und vollständige Kapitalmaßnahmenabdeckung fehlen.
 - Erwartete Nettorendite und separat definierte Tag-20-Aktienrendite sind weiterhin unbekannt, soweit kein belegter Ausführungspfad vorliegt.
+- Ereignisimporte bleiben claimed-unverified; bestätigte Earnings-/Kapitalmaßnahmenabdeckung und PIT-Verfügbarkeit fehlen. Kein Treffer bestätigt keine Ereignisfreiheit.
 - Aktuelle Rangliste bleibt die bisherige Referenzmethode; keine Prognosefreigabe und kein geprüfter Kaufstatus.
 - Optionaler experimenteller Stop im Tradeplan, keine echte Depotverwaltung und keine automatische Orderausführung.
 - Bisherige UI-Prüfung ist strukturell/Mock-DOM. Echte Browser- und Providerabnahme noch offen.

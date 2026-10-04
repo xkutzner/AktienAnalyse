@@ -17,3 +17,5 @@ Vierzehn synthetische Suiten, Build und Artefaktprüfung umfassen Gap, Entrybar 
 Reale Provider-/PIT-/Maßnahmenabnahme bleibt offen. Die drei Capability-Gates bleiben gesperrt, Simulation akzeptiert keine Clientfreigabe der Maßnahmenabdeckung. Keine Nettofreigabe, keine Orders oder Veröffentlichung. Risiko-/Featurepaket08 und Produktkarte09 sind nicht Teil dieses Pakets.
 
 Paket08a ergänzt getrennte experimentelle Präfix-Risikowerte; [RISK-FEATURES.md](RISK-FEATURES.md). Adjusted Research bleibt ohne ausführbaren Rohpreisplan; die Risikoergänzung verändert keine Einstieg-/Stopregel und qualifiziert keine Datenfreigabe.
+
+Paket08b verwendet denselben preisfreien `createEventWindow` für die 20-Sitzungsdeadline; Ereignisfenster einschließlich Tag20. Quellenstände und Änderungen stehen in [EVENT-REGISTRY.md](EVENT-REGISTRY.md). Unbekannte Unternehmensabdeckung ändert keine Ausführungs-/Nettofreigabe.

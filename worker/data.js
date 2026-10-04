@@ -128,10 +128,8 @@ export function createTradePlan(input={}){
  if(priceBasis!=='raw'||!Number.isFinite(referenceClose)||referenceClose<=0)return unknown('Rohschluss als Einstiegspreisanker fehlt');
  const entryTolerance=input.entryTolerance??.01,stopFraction=input.stopFraction??.05;
  if(!Number.isFinite(entryTolerance)||entryTolerance<0||entryTolerance>.1||!Number.isFinite(stopFraction)||stopFraction<=0||stopFraction>=1)return unknown('Ungültige experimentelle Einstieg-/Stopannahme');
- const regularSessions=[];let cursor=new Date(decisionDate+'T12:00:00Z');
- for(let i=0;i<60&&regularSessions.length<20;i++){cursor.setUTCDate(cursor.getUTCDate()+1);const day=cursor.toISOString().slice(0,10),s=session(day,mic);if(!s)return unknown('Enddatum außerhalb bekannten Kalenders');if(s.open)regularSessions.push(day)}
- if(regularSessions.length!==20)return unknown('20 reguläre Sitzungen nicht bestimmbar');
- if(Date.parse(asOf)>=Date.parse(regularSessionOpenUtc(regularSessions[0],mic)))return unknown('Nächstes reguläres Open bereits vergangen: neu entscheiden, Einstieg nicht verschieben');
+ const window=createEventWindow({decisionDate,asOf,mic});if(window.status==='unknown')return unknown(window.reason);
+ const regularSessions=window.regularSessions;
  return {version:TRADE_PLAN_VERSION,status:'experimental',netApproved:false,decisionDate,asOf,closeAvailableAt,mic,priceBasis,referenceClose,entryTolerance,validEntryDate:regularSessions[0],validAt:'next-regular-open-only',entryRange:{min:referenceClose*(1-entryTolerance),max:referenceClose*(1+entryTolerance),basis:'modeled-fill-price'},outsideEntry:'abstain-or-new-decision',targetFraction:.05,stopFraction,stopRule:'experimental-market-stop',plannedEndDate:regularSessions[19],regularSessions,calendarVersion:decision.calendarVersion,assumptions:[`${entryTolerance*100}% Einstiegstoleranz und ${stopFraction*100}% Stop sind experimentelle Szenarioannahmen, keine Nutzer-Risikopräferenzen.`,'Keine Ausführung zum Stoppreis garantiert; Ziel bleibt +5%.']};
 }
 
@@ -181,4 +179,17 @@ export function riskAt(bars,decisionIndex,{priceBasis='adjusted',volumeBasis='un
  result.openingGaps={status:'known',value:Math.min(...gaps),mean:gaps.reduce((a,b)=>a+b,0)/lookback,observations:gaps,sessions:lookback,basis,method:'minimum-opening-gap'};
  result.downsideMeasure={status:'known',value:Math.sqrt(returns.reduce((sum,r)=>sum+Math.min(r,0)**2,0)/lookback),sessions:lookback,basis,method:'daily-downside-deviation-zero-target',annualized:false};
  return result;
+}
+
+// Price-free decision window shared with trade plans; includes the decision day and session20.
+export function createEventWindow({decisionDate,asOf,mic}={}){
+ const unknown=reason=>({status:'unknown',reason});
+ if(!asOf||!Number.isFinite(Date.parse(asOf)))return unknown('Entscheidungszeit fehlt');
+ const completed=lastCompleted(new Date(asOf),mic),decision=session(decisionDate,mic);
+ if(!decision?.open||completed?.date!==decisionDate)return unknown('Entscheidungstag muss letzter abgeschlossener regulärer Schluss sein');
+ const regularSessions=[];let cursor=new Date(decisionDate+'T12:00:00Z');
+ for(let i=0;i<60&&regularSessions.length<20;i++){cursor.setUTCDate(cursor.getUTCDate()+1);const day=cursor.toISOString().slice(0,10),s=session(day,mic);if(!s)return unknown('Enddatum außerhalb bekannten Kalenders');if(s.open)regularSessions.push(day)}
+ if(regularSessions.length!==20)return unknown('20 reguläre Sitzungen nicht bestimmbar');
+ if(Date.parse(asOf)>=Date.parse(regularSessionOpenUtc(regularSessions[0],mic)))return unknown('Nächstes reguläres Open bereits vergangen: neu entscheiden, Einstieg nicht verschieben');
+ return {status:'experimental',decisionDate,asOf:new Date(asOf).toISOString(),mic,start:decisionDate,end:regularSessions[19],plannedEndDate:regularSessions[19],regularSessions,boundary:'decision-day-through-session20-inclusive',calendarVersion:decision.calendarVersion};
 }
