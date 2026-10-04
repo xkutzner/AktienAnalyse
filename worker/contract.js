@@ -13,7 +13,7 @@ export const ANALYSIS_CONTRACT=Object.freeze({
  },
  resultTypes:{historical:'Historischer Vergleich',costScenario:'Retrospektives Kostenszenario',experimental:'Experimentelle Schätzung',validated:'Auf zeitlich getrennten Daten geprüft'},
  states:{unknown:'Nicht beurteilbar',notSuitable:'Nicht geeignet',cash:'Bewusst Cash halten',experimental:'Experimentell beobachten'},
- costs:{currency:'USD',fixedFeeBasis:'Feste Gebühren pro Order in USD',bps:'10 Basispunkte = 0,10 %',status:'Modellannahmen; keine bestätigten Brokerabrechnungen',fx:'Ohne belegte FX-Daten keine EUR-Nettorendite'},
+ costs:{currency:'USD',fixedFeeBasis:'Feste Gebühren pro Order in USD',bps:'10 Basispunkte = 0,10 %',spread:'Einseitige Ausführungskonzession; getrennt von Slippage, Standard 0 bp ungeprüfte Annahme',status:'Modellannahmen; keine bestätigten Brokerabrechnungen',fx:'Ohne belegte FX-Daten keine EUR-Nettorendite'},
  validatedPurchaseReleased:false
 });
 export function scenarioCapital(value=ANALYSIS_CONTRACT.scenario.defaultCapital){

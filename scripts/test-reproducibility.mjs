@@ -50,7 +50,7 @@ try{
   const ids=['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333'];
   for(let i=0;i<3;i++)storage.set('snapshots/'+ids[i]+'.json',JSON.stringify({snapshotId:ids[i],provenance:{source:'Twelve Data /'+['time_series','splits','dividends'][i],parameters:{symbol:'AAPL',adjust:i===2?false:i===0?'none':undefined},retrievedAt:new Date().toISOString(),publicationTime:null,historicalVintage:null},payload:i===0?payload('AAPL'):i===1?{splits:[]}:{dividends:[]},error:null}));
   const simulated=await (await worker.fetch(new Request('https://test.local/api/simulation',{method:'POST',body:JSON.stringify({rawId:ids[0],splitId:ids[1],dividendId:ids[2],capital:54321})}),env,{waitUntil(){}})).json();
-  assert.equal(simulated.manifest.model.version,'execution-v3');
+  assert.equal(simulated.manifest.model.version,'execution-v4');
   assert.equal(simulated.manifest.archiveStatus,'saved');
   const simulationReplay=await worker.fetch(new Request('https://test.local/api/replay?id='+simulated.manifest.analysisId),env);
   assert.equal(simulationReplay.status,200);assert.equal((await simulationReplay.json()).status,'identical');

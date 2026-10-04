@@ -45,7 +45,7 @@ export function estimateFeatures(features,records,currentIndex,{basis='net',mark
  if(params.features.some(key=>!Number.isFinite(features?.[key])))return unavailable('Merkmale fehlen');
  const matured=records.filter(row=>Number.isInteger(row.index)&&row.index+20<=currentIndex&&params.features.every(key=>Number.isFinite(row.features?.[key])));
  // Net labels require explicit qualification; no client-side or retrospective substitution.
- let pool=matured.filter(row=>basis==='net'?row.netVerified===true&&row.pointInTimeVerified===true&&Number.isInteger(row.knownAtIndex)&&row.knownAtIndex<=currentIndex&&row.knownAtIndex>=row.index+20&&Number.isFinite(row.netReturn):Number.isFinite(row.proxyReturn)).map(row=>({...row,id:row.index,outcome:basis==='net'?row.netReturn:row.proxyReturn}));
+ let pool=matured.filter(row=>basis==='net'?row.labelVersion==='execution-label-v1'&&row.executionVersion==='execution-v4'&&row.netVerified===true&&row.pointInTimeVerified===true&&Number.isInteger(row.knownAtIndex)&&row.knownAtIndex<=currentIndex&&row.knownAtIndex>=row.index+20&&Number.isFinite(row.netReturn):Number.isFinite(row.proxyReturn)).map(row=>({...row,id:row.index,outcome:basis==='net'?row.netReturn:row.proxyReturn}));
  if(new Set(pool.map(row=>row.id)).size!==pool.length)return unavailable('Doppelte Trainingsbeobachtungen');
  const chronological=[...pool].sort((a,b)=>a.index-b.index);
  if(chronological.some((row,i)=>i&&(row.index-chronological[i-1].index<20||(row.index-chronological[i-1].index)%20!==0)))return unavailable('Überlappende oder inkonsistent gerasterte Fälle: keine Unsicherheitsschätzung; 20-Session-Raster erforderlich');
@@ -71,3 +71,4 @@ export function estimateFeatures(features,records,currentIndex,{basis='net',mark
  if(!ci)return {...diagnostics,status:'insufficient',reason:'Unsicherheitsintervall wegen dünner zeitlicher Abdeckung nicht belastbar'};
  return {...diagnostics,status:'exploratory',expectedNetReturn:basis==='net'?mean:null,metrics:{expectedReturn:mean,median:weightedQuantile(selected,.5),lossProbability:lossWeight/weight,averageLossWhenNegative:lossWeight?losses.reduce((s,row)=>s+row.weight*row.outcome,0)/lossWeight:null,worst10PercentMean:tailMean(selected,.1),outcomeRange80:{low:weightedQuantile(selected,.1),high:weightedQuantile(selected,.9)},meanUncertainty95:ci},uncertaintyNote:'Conditional block bootstrap: excludes uncertainty of scaling/threshold fitting and regime choice; nominal 95%, no guaranteed coverage',observationsOverlap:records.some((row,i)=>i&&row.index-records[i-1].index<20)};
 }
+

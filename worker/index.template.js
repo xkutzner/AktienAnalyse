@@ -3,7 +3,7 @@ import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis}
 const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
 import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
-import {simulateTrade, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
+import {simulateTrade, executionLabel, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
 const HORIZON = 20;
@@ -126,7 +126,7 @@ const worker = {
         if(!quality.usable)return finishSimulation({...context,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:'unknown',returnMetrics:{stockAt20:null,strategyNet:null,capitalWindowNet:null},version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
         const bars=sessionBars;
         const index=input.decisionDate?bars.findIndex(bar=>bar.date===input.decisionDate):Math.max(0,bars.length-21);
-        const result=simulateTrade(bars,index,actions,{costs,capital,horizon:ANALYSIS_CONTRACT.horizon,strict:true,brokerProfile:input.brokerProfile});
+        const result=simulateTrade(bars,index,actions,{costs,capital,horizon:ANALYSIS_CONTRACT.horizon,strict:true,priceBasis:'raw',currency:ANALYSIS_CONTRACT.currency,brokerProfile:input.brokerProfile});
         return finishSimulation({...context,...result,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:result.status==='blocked'?'unknown':'experimental',returnMetrics:simulationReturnMetrics(result,capital),dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
       } catch {return json({message:"Ungültige Eingabe oder Archiv nicht lesbar"},400)}
     }
@@ -223,7 +223,7 @@ async function getResearch(url, env, replayDownloads=null) {
   const currentForecasts = series.map((stock) => {
     const forecast = estimate(stock.current, records[stock.symbol], marketFeatures[currentIndex]?.r20 >= 0, currentIndex);
     const featureRecords=[];
-    for(let index=80;index+20<stock.bars.length;index+=20){const features=featureAt(stock.bars,marketBars,index),outcome=simulateTarget(stock.bars,index);if(features&&outcome)featureRecords.push({index,features,marketUp:marketFeatures[index]?.r20>=0,proxyReturn:outcome.tradeReturn,netReturn:null,netVerified:false,pointInTimeVerified:false});}
+    for(let index=80;index+20<stock.bars.length;index+=20){const features=featureAt(stock.bars,marketBars,index),outcome=simulateTarget(stock.bars,index);if(features&&outcome)featureRecords.push({index,features,marketUp:marketFeatures[index]?.r20>=0,proxyReturn:outcome.tradeReturn,...executionLabel(null,index,null,{priceBasis:'adjusted'})});}
     const options={marketUp:marketFeatures[currentIndex]?.r20>=0};
     const newAnalogs={proxy:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'proxy'}),net:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'net'})};
     return { ...stock.current, symbol: stock.symbol, close: stock.bars[currentIndex]?.close,

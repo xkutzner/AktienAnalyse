@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {simulateTrade,executionLabel,DEFAULT_COSTS} from '../worker/simulation.js';
+const costs=Object.fromEntries(Object.keys(DEFAULT_COSTS).map(key=>[key,0]));
+const bars=Array.from({length:21},(_,i)=>({date:String(i).padStart(4,'0'),open:100,high:104,low:99,close:100}));
+const actions={coverageVerified:true,pointInTimeVerified:true,splits:[],dividends:[]};
+const options={capital:10000,costs:{...costs,entryFixedFee:2,exitFixedFee:3,entrySpreadBps:10,exitSpreadBps:20,entrySlippageBps:5,exitSlippageBps:5},priceBasis:'raw',knownAtIndex:20};
+const trade=simulateTrade(bars,0,actions,options),label=executionLabel(bars,0,actions,options);
+assert.deepEqual(label.execution,trade);assert.equal(label.netReturn,trade.netReturn);assert.equal(label.capitalWindowNetReturn,trade.daily.at(-1).equity/10000-1);assert.equal(label.netVerified,true);
+assert.equal(trade.totalFees,5);assert.equal(trade.entryPrice,100.15);assert.equal(trade.exitPrice,99.75);
+assert.equal(executionLabel(bars,0,actions,{...options,priceBasis:'adjusted'}).netReturn,null);
+assert.equal(executionLabel(bars,0,actions,{...options,knownAtIndex:19}).netReturn,null);
+assert.equal(executionLabel(bars,0,{...actions,coverageVerified:false},options).netReturn,null);
+assert.equal(executionLabel(bars,0,{...actions,pointInTimeVerified:false},{...options,strict:false}).netVerified,false);
+assert.equal(simulateTrade(bars,0,actions,{...options,currency:'EUR'}).netReturn,null);
+assert.equal(simulateTrade(bars,0,actions,{...options,brokerProfile:'ibkr-fixed',strict:false}).status,'blocked');
+const small=simulateTrade(bars,0,actions,{capital:1000,costs:{...costs,entryFixedFee:2,exitFixedFee:3}}),large=simulateTrade(bars,0,actions,{capital:10000,costs:{...costs,entryFixedFee:2,exitFixedFee:3}});
+assert.ok(small.netReturn<large.netReturn);assert.equal(small.totalFees,large.totalFees);
+const early=structuredClone(bars);early[3].high=106;
+const dividend=simulateTrade(early,0,{...actions,dividends:[{exDate:'0002',amount:1,paymentDate:'0005'}]},{costs});
+assert.equal(dividend.daily[3].positionValue,0);assert.equal(dividend.daily[3].dividendReceivable,100);assert.equal(dividend.daily[5].dividendReceivable,0);assert.equal(dividend.daily[5].cash,10600);
+assert.equal(dividend.capitalWindowNetReturn,dividend.netReturn);
+console.log('Paket06 synthetic execution/label parity, costs, basis/FX/PIT blocks and cash/claims passed.');
+
+const {default:worker}=await import('../worker/index.js');
+const rejected=await worker.fetch(new Request('https://test.local/api/simulation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({currency:'EUR'})}),{});
+assert.equal(rejected.status,400);assert.match((await rejected.json()).message,/USD/);

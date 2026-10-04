@@ -78,7 +78,7 @@ Watchlistwechsel entfernt alte Kurs-/Ranking-/Detail-/Benchmark-/Backtestwerte u
 - Veröffentlichungsstände/Vintages und vollständige Maßnahmen inkl. weiterer Kapitalmaßnahmen sowie Dividenden-Zahlungstage beschaffen oder die Einschränkung bewusst beibehalten.
 - Historisches Universum/Delistings: heutige kleine Tech-Watchlist rückwirkend ist selektiv.
 - Alter `walkForward()` filtert vor Auswahl auf verfügbare spätere Outcomes; mögliche Hindsight-/Availability-Verzerrung separat beheben und prüfen. In diesem UI-Schritt unverändert.
-- Einheitlicher Ausführungs-/Outcomepfad für Labels, neue Schätzung und täglichen Strategietest fehlt; derzeit Proxys über `simulateTarget()`, separater execution-v3-Kern.
+- Paket 06 technisch lokal umgesetzt: execution-v4 für versionierte Rohpreislabels, Szenarien und Portfoliovergleich. Qualifizierte historische Trainingsdaten fehlen weiterhin; experimentelle adjusted-Proxys bleiben separat und werden nicht in Netto umbenannt. Review/Upload/Merge ausstehend; siehe [EXECUTION-LABELS.md](EXECUTION-LABELS.md).
 - Paket 04 technisch umgesetzt: Buildcommit-/Parameter-/Kalender-/Snapshotmanifest, unveränderliche Research- und Kostenszenarioarchive, providerfreier Replay mit Integritätsgate. Reale Archivintegration bleibt offen; siehe [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
 
 ### P1 – Validierung und Auswahl
