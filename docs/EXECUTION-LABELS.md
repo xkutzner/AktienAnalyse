@@ -20,3 +20,7 @@ Das aktuelle Prüfprotokoll ist als evaluation-protocol-v2 versioniert und nennt
 Dreizehn Suiten einschließlich neuer synthetischer Label-/Simulationsparität, Betrags-/Stückgebühren, separater Spread-/Slippage-Ausführung, FX-/adjusted-/PIT-Sperren und frühem Cash/Dividendenzahlung. Bestehende Referenz-, API-/UI-, Archiv-/Replay- und Datenfähigkeitsregressionen bleiben Teil der Abnahme. Synthetische Daten belegen Softwareverhalten, keine echte historische Qualifikation oder Prognosegüte.
 
 Reale Kosten-/Labelabnahme bleibt offen: keine lokal verfügbare Providerberechtigung, vollständige Kapitalmaßnahmenabdeckung und historische Vintages unbekannt. Keine Datenfreigabe durch Clientflags; drei Capability-Gates bleiben unabhängig evidenzabhängig. Keine neue Ausgabe realer Daten, Veröffentlichung oder Order. Reproduzierbarkeit behält normalisierte Snapshotzeiten, immutable Entscheidungen und providerfreien Replay bei. Neutralbuilds führen SOURCE_COMMIT=null; tatsächlichen Uploadcommit muss der Orchestrator separat bauen/testen.
+
+## Ergänzung Paket07
+
+Der gemeinsame execution-v4-Kern akzeptiert optional trade-plan-v1 (siehe [TRADE-PLAN.md](TRADE-PLAN.md)); ohne Plan bleibt die Referenzausführung erhalten. Planversion/Parameter und Theseereignisse werden separat archiviert. Label und Simulation reichen denselben Plan an denselben Kern weiter. Spätere Dividendenbuchungen ändern die getrennte Spread-/Slippage-Zurechnung des bereits gebuchten Exits nicht.

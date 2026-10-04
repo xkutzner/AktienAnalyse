@@ -110,6 +110,8 @@ Vorläufige Produktentscheidungen:
 
 ### 07 · Einstieg, Stop, Ziel und Enddatum ergänzen
 
+Technisch implementiert: [TRADE-PLAN.md](TRADE-PLAN.md). Upload/PR/Mergeprüfung und reale Datenabnahme offen.
+
 **Priorität:** P1 · **Abhängigkeit:** 06 · **Umfang:** groß
 
 - Gültigkeitszeitpunkt und zulässigen Einstiegspreisbereich definieren; außerhalb neu bewerten oder verzichten.

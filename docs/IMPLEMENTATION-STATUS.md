@@ -13,14 +13,14 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | 05 | Quellenfähigkeiten, unabhängige Gates und immutable Sammlung; Datenabnahme offen | `a23ba9e` / `a396b1e` · PR #5 | Zwölf Testsuiten mit tatsächlichem Sourcecommit, 14 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt |
 | 06 | Gemeinsamer execution-v4-Kern und execution-label-v1; getrennte Kosten und FX-Sperren | `28d51aa` / `2d45819` · PR #6 | Dreizehn Suiten mit tatsächlichem Sourcecommit, 20 bytegenaue Git-Blobs inklusive Referenz, Build und Artefakt; reale Datenabnahme offen |
 
-Details: [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
+Details: [TRADE-PLAN.md](TRADE-PLAN.md), [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA-CAPABILITIES.md), [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [SELECTION-V2.md](SELECTION-V2.md), [RAW-ADAPTER-MAE.md](RAW-ADAPTER-MAE.md), [ANALYSIS-CONTRACT.md](ANALYSIS-CONTRACT.md).
 
 
 ## Offen, in Reihenfolge
 
 | Paket | Status | Ergebnis / Abhängigkeit |
 |---|---|---|
-| 07 | In Umsetzung, eigener neuer Agentkontext | Einstieg, Stop, Ziel, Enddatum |
+| 07 | Technisch implementiert, Upload/PR/Mergeprüfung ausstehend | trade-plan-v1: Einstieg, experimenteller Stop, Ziel, Kalenderenddatum; reale Datenabnahme offen |
 | 08a | Wartet auf 05–07 | Handelbarkeit, Gap-/Downside-Risiko |
 | 08b | Wartet auf 05–07 | Bestätigte Ereignisse, Verfügbarkeit und Änderungen |
 | 09 | Wartet auf 06–08 | Szenarien, Kein-Kauf-Regeln, Analysekarte |
@@ -40,7 +40,7 @@ Details: [EXECUTION-LABELS.md](EXECUTION-LABELS.md), [DATA-CAPABILITIES.md](DATA
 - Research bleibt experimentell auf heute abgerufener bereinigter Historie. Historische Veröffentlichungsstände und vollständige Kapitalmaßnahmenabdeckung fehlen.
 - Erwartete Nettorendite und separat definierte Tag-20-Aktienrendite sind weiterhin unbekannt, soweit kein belegter Ausführungspfad vorliegt.
 - Aktuelle Rangliste bleibt die bisherige Referenzmethode; keine Prognosefreigabe und kein geprüfter Kaufstatus.
-- Kein neuer Stop, keine echte Depotverwaltung und keine automatische Orderausführung.
+- Optionaler experimenteller Stop im Tradeplan, keine echte Depotverwaltung und keine automatische Orderausführung.
 - Bisherige UI-Prüfung ist strukturell/Mock-DOM. Echte Browser- und Providerabnahme noch offen.
 - Keine neue Site-Veröffentlichung durch diese Orchestrierung. GitHub-main und live veröffentlichte Site sind getrennte Stände.
 

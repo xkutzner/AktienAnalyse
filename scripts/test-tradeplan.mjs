@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {createTradePlan} from '../worker/data.js';
+import {simulateTrade,executionLabel} from '../worker/simulation.js';
+const input={decisionDate:'2026-11-27',asOf:'2026-11-27T18:01:00Z',closeAvailableAt:'2026-11-27T18:00:30Z',mic:'XNAS',priceBasis:'raw',referenceClose:100};
+const plan=createTradePlan(input);assert.equal(plan.status,'experimental');assert.equal(plan.validEntryDate,'2026-11-30');assert.equal(plan.regularSessions.length,20);assert.equal(plan.plannedEndDate,'2026-12-28');
+for(const patch of [{asOf:'2026-11-27T17:59:00Z'},{closeAvailableAt:null},{mic:'UNKNOWN'},{priceBasis:'adjusted'},{asOf:null},{referenceClose:NaN}])assert.equal(createTradePlan({...input,...patch}).status,'unknown');
+assert.equal(createTradePlan({...input,decisionDate:'2026-03-09',asOf:'2026-03-09T20:01:00Z',closeAvailableAt:'2026-03-09T20:00:00Z'}).status,'experimental');
+const make=()=>[input.decisionDate,...plan.regularSessions].map(date=>({date,open:100,high:104,low:99,close:100}));
+const actions={coverageVerified:true,pointInTimeVerified:true,splits:[],dividends:[]};
+const costs={entryFeeBps:0,exitFeeBps:0,entryFixedFee:0,exitFixedFee:0,entrySlippageBps:0,exitSlippageBps:0};
+const options={tradePlan:plan,costs,priceBasis:'raw',knownAtIndex:20};
+let bars=make();Object.assign(bars[2],{open:80,high:106,low:79,close:100});let r=simulateTrade(bars,0,actions,options);assert.equal(r.exitReason,'stop-open-gap');assert.equal(r.exitPrice,80);assert.ok(r.netReturn<-.19);assert.equal(r.exitCategory,'stop');
+bars=make();Object.assign(bars[1],{high:106,low:90});r=simulateTrade(bars,0,actions,options);assert.equal(r.exitReason,'stop-intraday-assumed');assert.deepEqual(r.exitPriceBounds,[95,105]);assert.equal(r.mae,null);assert.equal(r.exitExecutionProven,false);
+assert.deepEqual(executionLabel(bars,0,actions,options).execution,r);
+bars=make();bars[20].halted=true;r=simulateTrade(bars,0,actions,options);assert.equal(r.status,'blocked');assert.match(r.reason,/Tag 20/);assert.equal(r.partial,true);
+bars=make();bars[1].open=102;bars[1].high=104;r=simulateTrade(bars,0,actions,options);assert.equal(r.entryDisposition,'abstain-or-reevaluate');assert.equal(r.daily.length,0);
+bars=make();r=simulateTrade(bars,0,actions,options);assert.equal(r.exitCategory,'time');assert.equal(r.exitDate,plan.plannedEndDate);assert.equal(r.plannedEndDate,plan.plannedEndDate);
+bars[2].high=106;r=simulateTrade(bars,0,actions,options);assert.equal(r.exitCategory,'target');assert.equal(r.exitPrice,105);
+bars=make();r=simulateTrade(bars,0,actions,{...options,thesisInvalidations:[{date:bars[2].date,availableAt:bars[2].date+'T13:00:00Z',phase:'before-open'}]});assert.equal(r.exitCategory,'thesis');
+assert.equal(simulateTrade(bars,0,actions,{...options,tradePlan:{...plan,plannedEndDate:'2026-12-29'}}).status,'blocked');
+assert.equal(simulateTrade(make(),0,{...actions,coverageVerified:false},options).status,'blocked');
+assert.equal(simulateTrade(make(),0,actions,{costs}).noStopLoss,true);
+const {default:worker}=await import('../worker/index.js');
+assert.equal((await worker.fetch(new Request('https://test/api/tradeplan'),{})).status,405);
+const response=await worker.fetch(new Request('https://test/api/tradeplan',{method:'POST',body:JSON.stringify(input)}),{});assert.deepEqual(await response.json(),plan);
+console.log('Tradeplan acceptance: calendar/DST/availability, exact entry/end, stop gap/both-hit, halt, separate exits and label parity passed.');
+
+for(const patch of [{asOf:'2026-11-27T17:00:00Z'},{referenceClose:90},{entryRange:{min:1,max:999}},{regularSessions:{}}])assert.equal(simulateTrade(make(),0,actions,{...options,tradePlan:{...plan,...patch}}).status,'blocked');
+bars=make();bars[2].high=106;const dividendActions={...actions,dividends:[{exDate:bars[2].date,amount:1,paymentDate:bars[4].date}]};r=simulateTrade(bars,0,dividendActions,{...options,costs:{...costs,exitSpreadBps:2,exitSlippageBps:3}});assert.ok(Number.isFinite(r.executionConcessions.exitSpread));assert.ok(Number.isFinite(r.executionConcessions.exitSlippage));
+
+assert.equal(createTradePlan({...input,asOf:'2026-11-30T15:00:00Z'}).status,'unknown');
+assert.equal(simulateTrade(make(),0,actions,{...options,tradePlan:false}).status,'blocked');
+assert.equal(createTradePlan({...input,asOf:'2026-11-30T14:29:00Z'}).status,'experimental');
