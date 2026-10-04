@@ -2,7 +2,7 @@ import {CAPABILITY_VERSION, dataCapabilities} from "./capabilities.js";
 import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
 const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
-import { loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
+import {createTradePlan,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
 import {simulateTrade, executionLabel, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
 import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
@@ -102,6 +102,10 @@ const worker = {
        return json({status:hash===record.manifest.resultHash?'identical':'mismatch',analysisId:id,resultHash:hash,manifest:record.manifest,result},hash===record.manifest.resultHash?200:409,{'cache-control':'no-store'});
       }catch{return json({status:'unknown',message:'Archiv nicht lesbar'},409)}
     }
+    if(url.pathname==='/api/tradeplan'){
+      if(request.method!=='POST')return json({message:'Nur POST erlaubt'},405);
+      try{return json(createTradePlan(await request.json()),200,{'cache-control':'no-store'})}catch{return json({message:'Ungültige Eingabe'},400)}
+    }
     if (url.pathname === "/api/simulation") {
       if(request.method!=="POST")return json({message:"Nur POST erlaubt"},405);
       try {
@@ -126,7 +130,7 @@ const worker = {
         if(!quality.usable)return finishSimulation({...context,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:'unknown',returnMetrics:{stockAt20:null,strategyNet:null,capitalWindowNet:null},version:SIMULATION_VERSION,status:'blocked',reason:'Rohdatenprüfung gesperrt: '+quality.issues.join(' · '),dataQuality,costs,grossReturn:null,netReturn:null,maxDrawdown:null,daily:[],actionsIssues:actions.issues},200,{'cache-control':'no-store'});
         const bars=sessionBars;
         const index=input.decisionDate?bars.findIndex(bar=>bar.date===input.decisionDate):Math.max(0,bars.length-21);
-        const result=simulateTrade(bars,index,actions,{costs,capital,horizon:ANALYSIS_CONTRACT.horizon,strict:true,priceBasis:'raw',currency:ANALYSIS_CONTRACT.currency,brokerProfile:input.brokerProfile});
+        const result=simulateTrade(bars,index,actions,{costs,capital,horizon:ANALYSIS_CONTRACT.horizon,strict:true,priceBasis:'raw',currency:ANALYSIS_CONTRACT.currency,brokerProfile:input.brokerProfile,tradePlan:input.tradePlan,thesisInvalidations:input.thesisInvalidations});
         return finishSimulation({...context,...result,resultType:'costScenario',resultLabel:ANALYSIS_CONTRACT.resultTypes.costScenario,analysisStatus:result.status==='blocked'?'unknown':'experimental',returnMetrics:simulationReturnMetrics(result,capital),dataQuality,dayConvention:'Einstiegstag = Handelstag 1; Zeitausstieg zum regulären Schluss von Tag 20',actionsIssues:actions.issues,decisionDate:bars[index]?.date||null},200,{'cache-control':'no-store'});
       } catch {return json({message:"Ungültige Eingabe oder Archiv nicht lesbar"},400)}
     }

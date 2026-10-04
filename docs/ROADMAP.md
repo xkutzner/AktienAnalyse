@@ -2,7 +2,7 @@
 
 ## Paket 01 · umgesetzt
 
-Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02–04 sind ebenfalls technisch umgesetzt und gemergt; Pakete 07–18 bleiben offen.
+Ausgangspunkt: `main`, `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`. Umsetzung gemäß angehängter Entwicklungsroadmap vom 04.10.2026, Paket 01. Pakete 02–04 sind ebenfalls technisch umgesetzt und gemergt; Paket07 ist technisch implementiert und wartet auf Upload/PR/Mergeprüfung; Pakete08–18 bleiben offen.
 
 - `selection-v2` entscheidet anhand des Datenpräfixes bis zum Entscheidungstag. Spätere Kurse werden erst für die Auswertung gelesen.
 - Fehlender späterer Einstiegskurs, ungültige spätere OHLC und fehlende spätere SPY-Sitzungen ändern keine damalige Auswahl. Unbekannte Outcomes bleiben `null`; kein Ersatzkandidat, kein nachträglicher Cash-Trade.
@@ -104,3 +104,7 @@ Watchlistwechsel entfernt alte Kurs-/Ranking-/Detail-/Benchmark-/Backtestwerte u
 ## Detaildokumentation
 [DATA-BASIS.md](DATA-BASIS.md), [SIMULATION.md](SIMULATION.md), [ANALOGUES.md](ANALOGUES.md), [BROKER-PROFILES.md](BROKER-PROFILES.md), [UI.md](UI.md), [Referenz](../reference/v1/README.md).
 
+
+## Paket 07 · technisch implementiert
+
+trade-plan-v1 ergänzt decision-time Rohpreisbereich, next-open Gültigkeit, experimentellen Stop und exakte regularSessions-Deadline. Gemeinsamer Kern und Labels behalten die alte Referenz ohne Plan. Konservative Stop/Ziel-Reihenfolge, Gap unter Stop, getrennte Exitgründe und blockierter Tag20-Halt sind geprüft. Vierzehn Suiten plus Build/Artefakt; reale Datenabnahme und Mergeprüfung offen. Details: [TRADE-PLAN.md](TRADE-PLAN.md).
