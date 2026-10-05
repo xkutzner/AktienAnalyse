@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import worker from '../worker/index.js';
+import {methodologyRegistry} from '../worker/methodology.js';
+import {renderPage,renderMethodology} from './render-page.mjs';
+import {DATA_VERSION} from '../worker/data.js';
+import {SIMULATION_VERSION} from '../worker/simulation.js';
+import {ANALOGUE_VERSION,ANALOGUE_PARAMETERS} from '../worker/analogues.js';
+const registry=methodologyRegistry();
+const response=await worker.fetch(new Request('https://test/api/methodology'),{});
+assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
+assert.deepEqual(await response.json(),registry);
+assert.equal((await worker.fetch(new Request('https://test/api/methodology',{method:'POST'}),{})).status,405);
+assert.equal(registry.versions.data,DATA_VERSION);assert.equal(registry.versions.execution,SIMULATION_VERSION);assert.equal(registry.versions.features,ANALOGUE_VERSION);
+assert.deepEqual(registry.features.keys,ANALOGUE_PARAMETERS.features);
+assert.equal(registry.features.referenceWeightsApplied,false);assert.equal(registry.features.ranking,false);
+assert.equal(registry.qualification.netForecastApproved,false);assert.equal(registry.qualification.empiricalVerified,false);
+// Independently exercise the existing score function on rising, falling and flat histories.
+const source=fs.readFileSync('worker/index.template.js','utf8');
+assert.ok(source.includes("version:'"+registry.versions.selection+"',method:"));
+const body=source.slice(source.indexOf('function featureAt('),source.indexOf('\nfunction buildRecords('));
+const featureAt=new Function(body+'\nfunction clamp(x,a,b){return Math.max(a,Math.min(b,x))} function scale(x,s){return clamp(50+x*s,0,100)} return featureAt;')();
+for(const rate of [-.03,0,.004,.04]){
+ const stock=Array.from({length:81},(_,i)=>({close:100*(1+rate)**i}));
+ const spy=Array.from({length:81},(_,i)=>({close:100*(1.001)**i}));
+ const result=featureAt(stock,spy,80);
+ const expected=registry.reference.features.reduce((sum,f)=>sum+f.weight*Math.max(0,Math.min(100,f.key==='vol20'?100-result[f.key]*f.sensitivity:50+result[f.key]*f.sensitivity)),0);
+ assert.ok(Math.abs(result.score-expected)<1e-10,'registered influences match actual clipped score');
+ assert.ok(Math.abs(result.r20-((1+rate)**20-1))<1e-10);
+ assert.ok(Math.abs(result.rel20-(result.r20-((1.001)**20-1)))<1e-10);
+ assert.ok(Math.abs(result.vol20)<1e-10);
+}
+const variable=Array.from({length:81},(_,i)=>({close:100+i+Math.sin(i)*2}));
+const result=featureAt(variable,variable,80);
+const daily=variable.slice(61).map((bar,i)=>bar.close/variable[60+i].close-1);
+const mean=daily.reduce((a,b)=>a+b,0)/20;
+const vol=Math.sqrt(daily.reduce((a,b)=>a+(b-mean)**2,0)/19*252);
+assert.ok(Math.abs(result.vol20-vol)<1e-12,'sample variance uses 19 and annualization 252');
+assert.ok(Math.abs(result.trend50-(variable[80].close/(variable.slice(31).reduce((a,b)=>a+b.close,0)/50)-1))<1e-12);
+const raw=fs.readFileSync('app/index.html','utf8'),page=renderPage(raw);
+for(const version of Object.values(registry.versions))assert.ok(page.includes(version));
+for(const f of registry.reference.features){assert.ok(page.includes(f.formula));assert.ok(page.includes(f.unit));assert.ok(page.includes(f.scoreFormula));}
+assert.ok(page.includes('keine Referenzgewichte'));assert.ok(page.includes('Geplant · noch kein aktiver Renditekern'));
+assert.ok(!page.includes('__METHODOLOGY_'));assert.ok(!page.includes('BLS-Live-Abruf liefert HTTP 403'));assert.ok(!page.includes('im aktuellen Tarif gesperrt'));
+assert.ok(renderMethodology({...registry,calendar:{description:'<script>bad</script>',access:'"'}}).includes('&lt;script&gt;'));
+assert.equal(registry.reference.features.length,5);
+assert.ok(Math.abs(registry.reference.features.reduce((a,f)=>a+f.weight,0)-1)<1e-12);
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));const suiteCount=(pkg.scripts.test.match(/node scripts\/test-/g)||[]).length;
+assert.equal(suiteCount,17);assert.ok(fs.readFileSync('README.md','utf8').includes(suiteCount+' offline ausführbare Testsuiten'));
+console.log('Methodology registry: API, versions, five formulas/units, actual clipped scoring, UI, statuses and test inventory passed (software only).');

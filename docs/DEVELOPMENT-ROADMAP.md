@@ -1,6 +1,8 @@
 # AktienAnalyse – Entwicklungsroadmap
 
-> Umsetzung V02 vom 05.10.2026: [Gemeinsame Preisanker](delivery/V02-PREISANKER.md) technisch umgesetzt, [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15). Schlussmarken ausdrücklich vorläufig; nach Einstieg verwenden Karte und Simulator dieselben Fill-/Splitmarken. Reale Daten-/Ausführungsabnahme offen; keine Prognosefreigabe. Nächster Lieferplanauftrag V03.
+> Umsetzung V03 vom 05.10.2026: [Methodikregistry](delivery/V03-METHODIKREGISTRY.md) technisch umgesetzt, [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16). Versionen/Referenzformeln/Einheiten/Einflussarten erzeugen API und Seitendoku; aktive, experimentelle und geplante Funktionen getrennt. 17 Offline-Suiten, Build und Artefaktprüfung; keine Daten- oder Prognosefreigabe. Nächster Auftrag V04.
+
+> Umsetzung V02 vom 05.10.2026: [Gemeinsame Preisanker](delivery/V02-PREISANKER.md) technisch umgesetzt, [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15). Schlussmarken ausdrücklich vorläufig; nach Einstieg verwenden Karte und Simulator dieselben Fill-/Splitmarken. Reale Daten-/Ausführungsabnahme offen; keine Prognosefreigabe. V03 ist oben dokumentiert.
 
 > Umsetzung V01 vom 05.10.2026: [Kalenderzeitvertrag](delivery/V01-KALENDERZEITPUNKT.md) technisch korrigiert. Aktuelle Beobachtung und historischer Snapshot-Replay getrennt; reale Archiv-/Browserabnahme offen, keine Prognosefreigabe. V02 ist oben dokumentiert.
 

@@ -1,3 +1,4 @@
+import {methodologyRegistry, REFERENCE_MODEL_VERSION} from "./methodology.js";
 import {MACRO_SNAPSHOT_VERSION, macroSnapshotId, createMacroSnapshot, readMacroSnapshot, projectMacroSnapshots, EVENT_VERSION, eventRevisionId, createEventRevision, readEventChain, projectEvents} from "./events.js";
 import {CAPABILITY_VERSION, dataCapabilities} from "./capabilities.js";
 import {REPRO_VERSION, RESEARCH_GRID, EVALUATION_PROTOCOL, digest, saveAnalysis} from "./reproducibility.js";
@@ -15,6 +16,7 @@ const MIN_ANALOGS = 12;
 const worker = {
   async fetch(request, env, ctx, replayMode=null) {
     const url = new URL(request.url);
+    if(url.pathname==="/api/methodology")return request.method==="GET"?json(methodologyRegistry(),200,{'cache-control':'no-store'}):json({message:"Nur GET erlaubt"},405);
     if(url.pathname==="/api/contract")return request.method==="GET"?json(ANALYSIS_CONTRACT):json({message:"Nur GET erlaubt"},405);
     if(url.pathname==='/api/protocol')return request.method==='GET'?json(EVALUATION_PROTOCOL):json({message:'Nur GET erlaubt'},405);
     if(url.pathname==='/api/capabilities')return request.method==='GET'?json(dataCapabilities(),200,{'cache-control':'no-store'}):json({message:'Nur GET erlaubt'},405);
@@ -261,7 +263,7 @@ async function getResearch(url, env, replayDownloads=null) {
     benchmark: { symbol: "SPY", close: marketBars[currentIndex]?.close, r20: marketNow.r20, r60: marketNow.r60 },
     riskModel:{version:RISK_VERSION,status:'experimental',thresholdsApplied:false,rankingChanged:false},
     comparisonModel:{version:ANALOGUE_VERSION,parameters:ANALOGUE_PARAMETERS,rankingChanged:false,outOfSampleVerified:false},
-    model: { version: "reference-v1", target: TARGET, horizon: HORIZON, minAnalogs: MIN_ANALOGS,
+    model: { version: REFERENCE_MODEL_VERSION, target: TARGET, horizon: HORIZON, minAnalogs: MIN_ANALOGS,
       factors: ["20-Tage-Momentum", "60-Tage-Momentum", "relative Stärke gegen SPY", "Abstand zum 50-Tage-Mittel", "Volatilität"] },
     stocks: currentForecasts,
     best: currentForecasts.find((stock) => stock.qualityUsable && stock.sampleCount >= MIN_ANALOGS && stock.expectedReturn > 0) || null,
