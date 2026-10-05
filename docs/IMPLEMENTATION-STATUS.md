@@ -8,7 +8,7 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 
 | Paket | Implementierung | Datenabnahme | Empirie | Nachweis |
 |---|---|---|---|---|
-| V01 | technisch erledigt, PR-Merge im Abschluss verknüpft | offen: reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | nicht erforderlich; keine Prognosefreigabe | [Kalenderzeitpunkt](delivery/V01-KALENDERZEITPUNKT.md) |
+| V01 | technisch erledigt, [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14), Merge im Abschluss | offen: reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | nicht erforderlich; keine Prognosefreigabe | [Kalenderzeitpunkt](delivery/V01-KALENDERZEITPUNKT.md) |
 
 Nächster Auftrag: V02 Preisanker. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
 

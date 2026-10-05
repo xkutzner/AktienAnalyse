@@ -41,7 +41,7 @@
 - I: erledigt, reproduzierbarer korrigierter Zeitvertrag. D: offen, reale Quelle erreicht aber produktives Archiv/Browser nicht abgenommen. E: nicht erforderlich für Softwarekorrektur; unveränderte empirische Gates bleiben gesperrt.
 
 ## Abschluss
-- PR / getesteter Head / Mergecommit: finaler Prüfkommentar und GitHub-PR-Metadaten sind autoritativer Abschlussnachweis (Commit kann seinen eigenen Hash nicht enthalten).
+- PR: [#14](https://github.com/xkutzner/AktienAnalyse/pull/14). Getesteter Head / Mergecommit: finaler Prüfkommentar und GitHub-PR-Metadaten sind autoritativer Abschlussnachweis (Commit kann seinen eigenen Hash nicht enthalten).
 - Grenzen/Folgepakete: V05 produktives Archiv/Index/Restore, V07 Rohquellen/Adapter/Coverage/Frische, V08 Unternehmensabdeckung, V22 echter Browser. Keine vollständige ICS-Spezifikation oder makroökonomische Evidenzfreigabe.
 - Zulässige Aussage: aktuelle beobachtete Termine mit Quellen- und Archivstatus; historisch nur belegte Beobachtung, keine garantierte Ereignisfreiheit, keine Nettoprognose oder Kaufempfehlung.
 - Deployment: nicht erfolgt.

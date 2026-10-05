@@ -268,7 +268,7 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 
 | Paket | I | D | E | Nächster Nachweis / Blocker | PR / Abschluss |
 |---|---|---|---|---|---|
-| V01 | erledigt | offen | nicht erforderlich | Reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | [Paketprotokoll](delivery/V01-KALENDERZEITPUNKT.md), PR folgt im Abschluss |
+| V01 | erledigt | offen | nicht erforderlich | Reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | [Paketprotokoll](delivery/V01-KALENDERZEITPUNKT.md), [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14) |
 | V02 | offen | offen | nicht erforderlich | Schluss-/Fill-Abweichung, Split | — |
 | V03 | offen | nicht erforderlich | nicht erforderlich | Registry/Seitenabgleich | — |
 | V04 | teilweise vorhanden | blockiert | nicht erforderlich | Reale Provider-/Lizenzabnahme | — |
