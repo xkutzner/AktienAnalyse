@@ -37,6 +37,21 @@ export function simulationReturnMetrics(result,capital){
  return {stockAt20:null,strategyNet:result.status==='blocked'?null:result.netReturn??null,capitalWindowNet:complete?result.daily.at(-1).equity/scenarioCapital(capital)-1:null};
 }
 
+// Price marks are arithmetic only: fill metadata never qualifies data or forecasts.
+// Fill price includes spread/slippage; order fees remain in the cash/return ledger.
+export function tradePriceLevels({referenceClose,fillPrice=null,fillBasis='modeled',shareFactor=1,stopFraction=null,targetFraction=.05}={}){
+ const finitePositive=x=>typeof x==='number'&&Number.isFinite(x)&&x>0;
+ const unknown=reason=>({version:'price-anchor-v1',status:'unknown',label:'Preisanker unbekannt',reason,anchorPrice:null,shareFactor:null,stop:null,target:null,costBasis:null});
+ if(!finitePositive(referenceClose)||!finitePositive(shareFactor)||!finitePositive(targetFraction)||targetFraction>=1||(stopFraction!==null&&(!finitePositive(stopFraction)||stopFraction>=1)))return unknown('Ungültiger Preisanker, Splitfaktor oder Stop-/Zielanteil');
+ if(fillPrice!==null&&(!finitePositive(fillPrice)||!['modeled','actual'].includes(fillBasis)))return unknown('Ungültiger Fillpreis oder unbekannte Ausführungsbasis');
+ if(fillPrice===null&&shareFactor!==1)return unknown('Splitmarken benötigen einen Einstiegspreis');
+ const provisional=fillPrice===null,anchorPrice=provisional?referenceClose:fillPrice;
+ const stop=stopFraction===null?null:anchorPrice*(1-stopFraction)/shareFactor,target=anchorPrice*(1+targetFraction)/shareFactor;
+ if(!finitePositive(target)||(stop!==null&&!finitePositive(stop)))return unknown('Preisanker außerhalb berechenbarer Grenzen');
+ const status=provisional?'provisional':fillBasis==='actual'?'actual-fill':'modeled-fill';
+ return {version:'price-anchor-v1',status,label:provisional?'Vorläufige Referenzmarken am Rohschluss':fillBasis==='actual'?'Marken am angegebenen tatsächlichen Fill':'Modellierte Marken am Fillpreis',anchorPrice,shareFactor,stop,target,costBasis:provisional?'Rohschluss ohne Einstiegskosten; bei Einstieg neu berechnen':'Fillpreis einschließlich Spread/Slippage, ohne Ordergebühren; Gebühren separat im Nettoledger',priceBasis:'raw',fillVerified:false};
+}
+
 // One policy for API and UI. Qualification is internal evidence, never a release flag.
 export const ANALYSIS_CARD_STATES=Object.freeze({checkedSuitable:'Geeignet im geprüften Modus',experimentalObserving:'Experimentell beobachten',noSuitable:'Aktuell keine geeignete Aktie',unknown:'Nicht beurteilbar'});
 export function analysisCardPolicy(input={}){
@@ -52,6 +67,8 @@ export function analysisCardPolicy(input={}){
  const candidate=input.rawTradePlan;
  const plan=evidence.data==='qualified'&&candidate?.version==='trade-plan-v1'&&candidate.status==='experimental'&&typeof input.asOf==='string'&&candidate.decisionDate===input.asOf.slice(0,10)&&Number.isFinite(Date.parse(candidate.asOf))&&(input.asOf.length===10||Date.parse(input.asOf)>=Date.parse(candidate.asOf))&&finite(candidate.referenceClose)&&candidate.referenceClose>0&&finite(candidate.entryRange?.min)&&finite(candidate.entryRange?.max)&&candidate.entryRange.min>0&&candidate.entryRange.max>=candidate.entryRange.min&&finite(candidate.stopFraction)&&candidate.stopFraction>0&&candidate.stopFraction<1&&candidate.targetFraction===.05&&typeof candidate.plannedEndDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(candidate.plannedEndDate)?candidate:null;
  if(!plan)blocks.push('Qualifizierter experimenteller Rohpreisplan fehlt');
+ const priceLevels=plan?tradePriceLevels({referenceClose:plan.referenceClose,stopFraction:plan.stopFraction,targetFraction:plan.targetFraction,...(input.entryFill?{fillPrice:input.entryFill.price??NaN,fillBasis:input.entryFill.basis??'unknown',shareFactor:input.entryFill.shareFactor??1}: {})}):tradePriceLevels();
+ if(plan&&priceLevels.status==='unknown')blocks.push('Fillpreis oder Splitbasis ungültig: Stop/Ziel unbekannt');
  const qualified=blocks.length===0;
  let status='unknown';
  if(qualified)status=net.lossUSD>risk.maxLossUSD||input.dailyValueUSD<risk.minDailyValueUSD||net.middle<=0?'noSuitable':'experimentalObserving';
@@ -61,5 +78,5 @@ export function analysisCardPolicy(input={}){
  const reasons=blocks.length?blocks.slice(0,2):['Qualifiziertes experimentelles Szenario','Geprüfter Kaufmodus bis Paket 14 gesperrt'];
  while(reasons.length<2)reasons.push('Cash ist eine reguläre Alternative');
 
- return {version:'analysis-card-v1',status,label:ANALYSIS_CARD_STATES[status],reasons,constraints:blocks,forecastReleased:false,cashAlternative:true,resultStatus:qualified?'Experimentelles Szenario':'Historischer Vergleich; Netto und Risiko unbekannt',asOf:input.asOf||null,costStatus:evidence.costs==='qualified'?'Qualifizierte Szenariokosten':'Ungeprüfte Modellannahmen',middleNet:qualified?net.middle:null,adverseNet:qualified?net.adverse:null,lossUSD:qualified?net.lossUSD:null,entryRange:plan?.entryRange||null,stop:plan?plan.referenceClose*(1-plan.stopFraction):null,target:plan?plan.referenceClose*(1+plan.targetFraction):null,plannedEndDate:plan?.plannedEndDate||null,historicalMean:input.qualityUsable===true&&input.sampleCount>=12&&finite(input.expectedReturn)?input.expectedReturn:null};
+ return {version:'analysis-card-v1',status,label:ANALYSIS_CARD_STATES[status],reasons,constraints:blocks,forecastReleased:false,cashAlternative:true,resultStatus:qualified?'Experimentelles Szenario':'Historischer Vergleich; Netto und Risiko unbekannt',asOf:input.asOf||null,costStatus:evidence.costs==='qualified'?'Qualifizierte Szenariokosten':'Ungeprüfte Modellannahmen',middleNet:qualified?net.middle:null,adverseNet:qualified?net.adverse:null,lossUSD:qualified?net.lossUSD:null,entryRange:plan?.entryRange||null,priceLevels,stop:priceLevels.stop,target:priceLevels.target,plannedEndDate:plan?.plannedEndDate||null,historicalMean:input.qualityUsable===true&&input.sampleCount>=12&&finite(input.expectedReturn)?input.expectedReturn:null};
 }

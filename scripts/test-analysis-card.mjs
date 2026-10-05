@@ -1,6 +1,6 @@
 import {createTradePlan} from '../worker/data.js';
 import assert from 'node:assert/strict';
-import {analysisCardPolicy,ANALYSIS_CARD_STATES} from '../worker/contract.js';
+import {analysisCardPolicy,ANALYSIS_CARD_STATES,tradePriceLevels} from '../worker/contract.js';
 import {renderPage} from './render-page.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -28,3 +28,21 @@ for(const patch of [{lossUSD:-1},{adverse:.03}])assert.equal(analysisCardPolicy(
 assert.equal(analysisCardPolicy({...good,dailyValueUSD:-1}).status,'unknown');
 
 for(const asOf of ['2026-10-02','2026-11-27T17:00:00Z','invalid'])assert.equal(analysisCardPolicy({...good,asOf}).status,'unknown');
+
+// Decision-time reference marks must never masquerade as filled-price triggers.
+const provisional=analysisCardPolicy(good);
+assert.equal(provisional.priceLevels.status,'provisional');assert.equal(provisional.stop,95);assert.equal(provisional.target,105);
+assert.match(provisional.priceLevels.label,/Vorläufig/);
+for(const basis of ['modeled','actual']){
+ const input={...good,entryFill:{price:101,basis,shareFactor:2}};
+ const card=analysisCardPolicy(input);
+ assert.deepEqual(card.priceLevels,tradePriceLevels({referenceClose:100,fillPrice:101,fillBasis:basis,shareFactor:2,stopFraction:.05}));
+ assert.ok(Math.abs(card.stop-47.975)<1e-10);assert.ok(Math.abs(card.target-53.025)<1e-10);
+ assert.equal(card.priceLevels.fillVerified,false);assert.equal(card.forecastReleased,false);
+ context.input=input;assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('analysisCardPolicy(input)',context))),card);
+}
+for(const entryFill of [{},{price:0,basis:'modeled'},{price:101,basis:'verified'},{price:101,basis:'modeled',shareFactor:-2}]){
+ const card=analysisCardPolicy({...good,entryFill});assert.equal(card.priceLevels.status,'unknown');assert.equal(card.status,'unknown');assert.equal(card.middleNet,null);assert.equal(card.stop,null);assert.equal(card.target,null);
+}
+for(const patch of [{shareFactor:0},{shareFactor:Infinity},{fillPrice:NaN},{fillPrice:100,fillBasis:'verified'},{fillPrice:null,shareFactor:2},{targetFraction:1}])assert.equal(tradePriceLevels({referenceClose:100,...patch}).status,'unknown');
+assert.match(html,/card.priceLevels.label/);assert.match(html,/card.priceLevels.costBasis/);

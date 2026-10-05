@@ -1,6 +1,8 @@
 # AktienAnalyse – Entwicklungsroadmap
 
-> Umsetzung V01 vom 05.10.2026: [Kalenderzeitvertrag](delivery/V01-KALENDERZEITPUNKT.md) technisch korrigiert. Aktuelle Beobachtung und historischer Snapshot-Replay getrennt; reale Archiv-/Browserabnahme offen, keine Prognosefreigabe. Nächster Lieferplanauftrag V02.
+> Umsetzung V02 vom 05.10.2026: [Gemeinsame Preisanker](delivery/V02-PREISANKER.md) technisch umgesetzt, PR folgt. Schlussmarken ausdrücklich vorläufig; nach Einstieg verwenden Karte und Simulator dieselben Fill-/Splitmarken. Reale Daten-/Ausführungsabnahme offen; keine Prognosefreigabe. Nächster Lieferplanauftrag V03.
+
+> Umsetzung V01 vom 05.10.2026: [Kalenderzeitvertrag](delivery/V01-KALENDERZEITPUNKT.md) technisch korrigiert. Aktuelle Beobachtung und historischer Snapshot-Replay getrennt; reale Archiv-/Browserabnahme offen, keine Prognosefreigabe. V02 folgt darunter.
 
 > Ergänzung vom 05.10.2026: Das [Produktkonzept](PRODUCT-CONCEPT-20D.md) konkretisiert das neue Zielbild. Der [Lieferplan V01–V24](DELIVERY-PLAN-20D.md) ordnet Fehlerkorrekturen, echte Datenabnahmen, UI, Kaufjournal und Erfolgsmessung in kleine Arbeitspakete ein und enthält die Zuordnung zu den bisherigen Paketen 01–18. Bei fachlichen Zielkonflikten gilt das neuere Konzept; bestehende Implementierungsnachweise bleiben erhalten. Keine automatische Umsetzung oder Freigabe durch diese Dokumentation.
 
