@@ -1,6 +1,6 @@
 # Implementierungsstand und Arbeitswarteschlange
 
-> Planungsupdate 05.10.2026: Neues [Produktkonzept](PRODUCT-CONCEPT-20D.md) und [Lieferplan mit getrenntem Implementierungs-/Daten-/Empiriestatus](DELIVERY-PLAN-20D.md). Der unten dokumentierte Implementierungsstand bleibt unverändert. V01 ist technisch umgesetzt; seine reale Betriebsabnahme bleibt offen. Weitere V-Pakete gemäß Lieferplan.
+> Planungsupdate 05.10.2026: Neues [Produktkonzept](PRODUCT-CONCEPT-20D.md) und [Lieferplan mit getrenntem Implementierungs-/Daten-/Empiriestatus](DELIVERY-PLAN-20D.md). Der unten dokumentierte Implementierungsstand bleibt unverändert. V01 und V02 sind technisch umgesetzt; reale Betriebs-/Ausführungsabnahmen bleiben offen. Weitere V-Pakete gemäß Lieferplan.
 
 Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). Paketdetails stehen in den jeweils verlinkten Dateien. Dieser Bericht behauptet keine Prognosegüte.
 
@@ -9,8 +9,9 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | Paket | Implementierung | Datenabnahme | Empirie | Nachweis |
 |---|---|---|---|---|
 | V01 | technisch erledigt, [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14), Merge im Abschluss | offen: reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | nicht erforderlich; keine Prognosefreigabe | [Kalenderzeitpunkt](delivery/V01-KALENDERZEITPUNKT.md) |
+| V02 | technisch erledigt, [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15) | offen: reale Rohkurs-/Fill-/Maßnahmen-/Kostenabnahme V04/V09 | nicht erforderlich; keine Prognosefreigabe | [Preisanker](delivery/V02-PREISANKER.md) |
 
-Nächster Auftrag: V02 Preisanker. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
+Nächster Auftrag: V03 Methodikregistry. V02 verwendet dieselbe Preisankerfunktion für vorläufige Referenzmarken und modellierte/angegebene tatsächliche Fillmarken; kumulative Splits ändern Marken und Stückzahl gemeinsam. Angegebene Fills sind nicht verifiziert. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
 
 ## In main umgesetzt
 

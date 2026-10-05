@@ -264,12 +264,12 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 
 ## 7. Lebendes Statusregister
 
-**Fortgeschriebener Stand 05.10.2026:** V01 technisch umgesetzt; reale Archiv-/Browserabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
+**Fortgeschriebener Stand 05.10.2026:** V01 und V02 technisch umgesetzt; reale Archiv-/Browser-/Ausführungsabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
 
 | Paket | I | D | E | Nächster Nachweis / Blocker | PR / Abschluss |
 |---|---|---|---|---|---|
 | V01 | erledigt | offen | nicht erforderlich | Reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | [Paketprotokoll](delivery/V01-KALENDERZEITPUNKT.md), [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14) |
-| V02 | offen | offen | nicht erforderlich | Schluss-/Fill-Abweichung, Split | — |
+| V02 | erledigt | offen | nicht erforderlich | Reale Ausführungs-/Maßnahmenabnahme V04/V09; keine Prognosefreigabe | [Paketprotokoll](delivery/V02-PREISANKER.md), [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15) |
 | V03 | offen | nicht erforderlich | nicht erforderlich | Registry/Seitenabgleich | — |
 | V04 | teilweise vorhanden | blockiert | nicht erforderlich | Reale Provider-/Lizenzabnahme | — |
 | V05 | teilweise vorhanden | offen | nicht erforderlich | Produktiver Lauf/Archiv/Restore | — |
