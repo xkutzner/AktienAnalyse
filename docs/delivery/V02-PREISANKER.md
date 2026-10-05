@@ -4,7 +4,7 @@
 - Ziel: Eine gemeinsame Funktion für vorläufige Schlussreferenzmarken und Marken am modellierten oder angegebenen tatsächlichen Fill; Kostenbasis und Splits nachvollziehbar. Bestehende Exitregeln erhalten.
 - Nichtziel: neue Exitstrategie, reale Fills/Orders, Netto-/Datenfreigabe, Siteveröffentlichung oder Änderung an `reference/v1`.
 - Ausgangscommit: `8434cb1204aba5e1920d4e2a0e82cec3d11c61c8` (`main`, V01-Merge), 05.10.2026. Keine offenen PRs beim Start.
-- Verantwortlicher: separater Implementierungsagent V02; Branch `delivery/v02-price-anchors`; Implementierung technisch erledigt, PR folgt.
+- Verantwortlicher: separater Implementierungsagent V02; Branch `delivery/v02-price-anchors`; Implementierung technisch erledigt, [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15).
 - Bezug: Produktkonzept §9.2, Lieferplan V02, bisherige Pakete 06/07/09.
 - Abhängigkeiten: Simulator/Tradeplan vorhanden. Reale qualifizierte Rohkurse, Maßnahmen, Kosten und Fillbelege fehlen; V04/V09/V17 bleiben separat.
 
@@ -33,10 +33,10 @@
 | Prüfung | Befehl oder Ablauf | Ergebnis | Nachweis | Einschränkung |
 |---|---|---|---|---|
 | Paketabnahme | `node scripts/test-analysis-card.mjs` und `node scripts/test-tradeplan.mjs` nach Render | bestanden | Schluss/Fill, Kostenbasis, Splits, unbekannte Eingaben, Karten-/Simulator-/Labelparität | synthetisch, keine echten Fills |
-| Regression | `SOURCE_COMMIT=<tatsächlicher finaler PR-Head> npm test` | finales Ergebnis im PR-Abschluss | alle 16 Suiten inkl eingefrorener Referenz | Offline/Mock-DOM, keine Prognosegüte |
-| Build | `SOURCE_COMMIT=<tatsächlicher finaler PR-Head> npm run build` | finales Ergebnis im PR-Abschluss | Sourcecommit wird eingebettet | keine Site-Veröffentlichung |
-| Artefakt | `npm run validate` und Sourcecommit-Abgleich | finales Ergebnis im PR-Abschluss | valides ESM/`default.fetch`, tatsächlicher Head | lokales Buildartefakt |
-| Git-Integrität | SHA1 aller Gitblobs gegen API-Tree, Referenzpfade unverändert | finales Ergebnis im PR-Abschluss | bytegenaue Basis und finaler Sourcebaum | keine Force-Pushes |
+| Regression | `SOURCE_COMMIT=<tatsächlicher finaler PR-Head> npm test` | bestanden; exakter finaler Head im PR-Abschluss | alle 16 Suiten inkl eingefrorener Referenz | Offline/Mock-DOM, keine Prognosegüte |
+| Build | `SOURCE_COMMIT=<tatsächlicher finaler PR-Head> npm run build` | bestanden; exakter finaler Head im PR-Abschluss | Sourcecommit wird eingebettet | keine Site-Veröffentlichung |
+| Artefakt | `npm run validate` und Sourcecommit-Abgleich | bestanden; exakter finaler Head im PR-Abschluss | valides ESM/`default.fetch`, tatsächlicher Head | lokales Buildartefakt |
+| Git-Integrität | SHA1 aller Gitblobs gegen API-Tree, Referenzpfade unverändert | bestanden; exakter finaler Head im PR-Abschluss | bytegenaue Basis und finaler Sourcebaum | keine Force-Pushes |
 | Reale Ausführung/Browser | qualifizierte Rohkurse/Aktionen, anonymisierte Fill-/Kostenbelege und reale Sitzung | nicht ausführbar | Zugänge/Belege fehlen; keine reale Behauptung | V04/V09/V17/V22 |
 | Korrigierte Zwischenprüfung | zusätzlicher Karten-Zahlentest | zunächst fehlgeschlagen, korrigiert | IEEE-754-Rundung 53,025000000000006 statt exakter Literale; Toleranz <1e-10 | keine Produktionsformeländerung dafür |
 
@@ -48,7 +48,7 @@
 - **I: erledigt** – gemeinsame Preisanker, explizite Basis, Regressionen. **D: offen** – reale Preise/Aktionen/Kosten/Fills über V04/V09/V17 zu beschaffen und zu prüfen. **E: nicht erforderlich** – Softwarekorrektur; Prognoseempirie weiterhin gesperrt.
 
 ## Abschluss
-- PR / getesteter Head / Mergecommit: im PR-Abschluss nach finaler Git-/Testprüfung; PR-Link wird vor Merge in allen drei Statusdokumenten ergänzt. Mergecommit entsteht erst beim Merge und ist über den PR nachvollziehbar.
+- PR / getesteter Head / Mergecommit: [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15), getesteter finaler Head und Mergecommit im PR-Abschluss nach Git-/Testprüfung. Mergecommit entsteht erst beim Merge und ist über den PR nachvollziehbar.
 - Offene Restpunkte: qualifizierte tatsächliche Ausführungsdaten V04/V09, tatsächlicher Ledger V17, angemeldeter Browser V22. Kein synthetischer Fall ersetzt diese Abnahmen.
 - Produktfreigabe: Preisanker sind technisch konsistent und die Referenzmarken ehrlich vorläufig. Keine Netto- oder Kaufempfehlungsfreigabe; alle Capability-Gates bleiben gesperrt.
 - Deployment: nicht erfolgt.
