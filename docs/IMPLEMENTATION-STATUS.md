@@ -1,8 +1,16 @@
 # Implementierungsstand und Arbeitswarteschlange
 
-> Planungsupdate 05.10.2026: Neues [Produktkonzept](PRODUCT-CONCEPT-20D.md) und [Lieferplan mit getrenntem Implementierungs-/Daten-/Empiriestatus](DELIVERY-PLAN-20D.md). Der unten dokumentierte Implementierungsstand bleibt unverändert. Neue V-Pakete sind noch nicht umgesetzt; ihre Ausgangslage und Abnahmekriterien stehen im Lieferplan.
+> Planungsupdate 05.10.2026: Neues [Produktkonzept](PRODUCT-CONCEPT-20D.md) und [Lieferplan mit getrenntem Implementierungs-/Daten-/Empiriestatus](DELIVERY-PLAN-20D.md). Der unten dokumentierte Implementierungsstand bleibt unverändert. V01 ist technisch umgesetzt; seine reale Betriebsabnahme bleibt offen. Weitere V-Pakete gemäß Lieferplan.
 
 Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). Paketdetails stehen in den jeweils verlinkten Dateien. Dieser Bericht behauptet keine Prognosegüte.
+
+## Lieferplan V01–V24
+
+| Paket | Implementierung | Datenabnahme | Empirie | Nachweis |
+|---|---|---|---|---|
+| V01 | technisch erledigt, [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14), Merge im Abschluss | offen: reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | nicht erforderlich; keine Prognosefreigabe | [Kalenderzeitpunkt](delivery/V01-KALENDERZEITPUNKT.md) |
+
+Nächster Auftrag: V02 Preisanker. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
 
 ## In main umgesetzt
 
@@ -50,3 +58,4 @@ Details: [COMPARISON-PREPARATION.md](COMPARISON-PREPARATION.md), [ANALYSIS-CARD.
 ## Orchestrierungsregel
 
 Ein frischer Agent pro Paket, genau ein Paket gleichzeitig, dokumentierte Prüfungen und PR, Merge des getesteten Heads vor dem nächsten Start. Neue Chatfenster lassen sich in dieser Umgebung nicht automatisch öffnen. Fehlende Zugänge und künftige Daten werden als echte Blocker erfasst; kein Paket wird nur durch Dokumentation oder synthetische Tests empirisch freigegeben.
+

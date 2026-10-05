@@ -45,3 +45,44 @@ export function projectEvents(revisions,{asOf,start,end,symbols}){
  }
  return [...latest.values()].filter(row=>symbols.includes(row.symbol)&&row.state!=='cancelled'&&row.effectiveDate>=start&&row.effectiveDate<=end).map(row=>({...row,date:row.effectiveDate,points:row.confirmationStatus==='confirmed-source-evidence'?(row.kind==='earnings'?60:40):0}));
 }
+
+
+// Whole-source snapshots preserve removals and revisions; absence never proves coverage.
+export const MACRO_SNAPSHOT_VERSION='macro-calendar-snapshot-v1';
+export function macroSnapshotId(id){return typeof id==='string'&&/^[a-f0-9]{64}$/.test(id)}
+export function parseBlsCalendar(text){
+ const events=[];text=text.replace(/\r?\n[ \t]/g,'');
+ for(const block of text.split('BEGIN:VEVENT').slice(1)){
+  const title=block.match(/(?:^|\n)SUMMARY:([^\r\n]+)/)?.[1],raw=block.match(/(?:^|\n)DTSTART([^:]*):(\d{8})(?:T(\d{6})(Z)?)?(?:\r?\n|$)/);
+  if(!title||!raw)throw Error('Unlesbarer Kalendereintrag');
+  if(/(?:^|\n)STATUS:CANCELLED(?:\r?\n|$)/.test(block))continue;
+  if(raw[3]&&(Number(raw[3].slice(0,2))>23||Number(raw[3].slice(2,4))>59||Number(raw[3].slice(4,6))>59))throw Error('Ungültige Uhrzeit');
+  const y=raw[2].slice(0,4),m=raw[2].slice(4,6),d=raw[2].slice(6,8);
+  let date=y+'-'+m+'-'+d,time='Unbekannt';
+  if(!Number.isFinite(Date.parse(date+'T12:00:00Z'))||new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw Error('Ungültiger Termin');
+  if(raw[3]){
+   if(raw[4]){const dt=new Date(date+'T'+raw[3].slice(0,2)+':'+raw[3].slice(2,4)+':'+raw[3].slice(4,6)+'Z');if(!Number.isFinite(dt.getTime()))continue;date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(dt);time=raw[3].slice(0,2)+':'+raw[3].slice(2,4)+' UTC';}
+   else {if(raw[1]&&!/TZID=(?:America\/New_York|US\/Eastern|US-Eastern)/.test(raw[1]))throw Error('Unbekannte Kalenderzeitzone');time=raw[3].slice(0,2)+':'+raw[3].slice(2,4)+' US Eastern';}
+  }
+  if(new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw Error('Ungültiger Termin');
+  const points=/Consumer Price Index|Employment Situation/i.test(title)?35:/Producer Price Index|Employment Cost Index|Job Openings/i.test(title)?20:0;
+  events.push({date,title,symbol:null,points,time,source:'https://www.bls.gov/schedule/news_release/bls.ics'});
+ }
+ if(!events.length&&!/BEGIN:VCALENDAR[\s\S]*END:VCALENDAR/.test(text))throw Error('Antwort enthält keinen lesbaren Kalender');
+ return events;
+}
+export async function createMacroSnapshot(text,observedAt){
+ const body={version:MACRO_SNAPSHOT_VERSION,source:'https://www.bls.gov/schedule/news_release/bls.ics',observedAt:timestamp(observedAt),events:parseBlsCalendar(text)};
+ if(!body.observedAt)throw Error('Beobachtungszeit fehlt');return {...body,snapshotId:await digest(body)};
+}
+export async function readMacroSnapshot(bucket,id){
+ if(!macroSnapshotId(id))throw Error('Ungültige Snapshot-ID');const object=await bucket.get('macro/bls/'+id+'.json');if(!object)throw Error('Snapshot fehlt');
+ const row=JSON.parse(await object.text()),{snapshotId,...body}=row;
+ if(snapshotId!==id||row.version!==MACRO_SNAPSHOT_VERSION||!timestamp(row.observedAt)||await digest(body)!==id)throw Error('Snapshotintegrität verletzt');return row;
+}
+export function projectMacroSnapshots(rows,asOf,start,end){
+ const eligible=rows.filter(r=>Date.parse(r.observedAt)<=Date.parse(asOf)).sort((a,b)=>a.observedAt.localeCompare(b.observedAt));
+ const latest=eligible.at(-1);if(!latest)return [];
+ if(eligible.some(r=>r.observedAt===latest.observedAt&&r.snapshotId!==latest.snapshotId))throw Error('Mehrdeutiger Quellenstand');
+ return latest.events.filter(e=>e.points&&e.date>=start&&e.date<=end).map(e=>({...e,knownAt:latest.observedAt,observedAt:latest.observedAt,snapshotId:latest.snapshotId,confirmationStatus:'source-observation-unqualified',availabilityQualification:'server-observed-not-historical-publication',evidenceValidation:'calendar-parser; no-PIT-qualification'}));
+}
