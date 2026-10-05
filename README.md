@@ -2,7 +2,7 @@
 
 Research-Tool für eine US-Aktien-Watchlist. Drei Bereiche: Übersicht, Aktiendetails sowie Einstellungen & Methodik. Keine Brokerorders.
 
-Die Rangliste nutzt `reference-v1`: historische Vergleiche auf bereinigten Kursen ohne Kosten. `features-v2` ist experimentell. `execution-v2` ist implementiert; reale Nettoergebnisse bleiben bei fehlenden historischen Datenständen und Kapitalmaßnahmen gesperrt. Historische Häufigkeiten sind keine kalibrierten Prognosewahrscheinlichkeiten.
+Die Rangliste nutzt `reference-v1`: historische Vergleiche auf bereinigten Kursen ohne Kosten. `selection-v2` korrigiert die historische Auswahl; `reference/v1` bleibt das unveränderte historische Archiv mit bekanntem Auswahlfehler. `features-v2` ist experimentell und verwendet keine Referenzgewichte. `execution-v4` ist implementiert; reale Nettoergebnisse bleiben bei fehlenden historischen Datenständen und Kapitalmaßnahmen gesperrt. Historische Häufigkeiten sind keine kalibrierten Prognosewahrscheinlichkeiten.
 
 ## Ausführen und prüfen
 
@@ -15,7 +15,9 @@ npm run build
 npm run validate
 ```
 
-`worker/index.js` und `dist/` werden generiert und sind nicht eingecheckt. Acht Tests prüfen Berechnung, Kalender, Referenz, Daten, Simulation, Vergleiche, Broker und UI. UI-Tests nutzen einen Mock-DOM.
+`worker/index.js` und `dist/` werden generiert und sind nicht eingecheckt. 17 offline ausführbare Testsuiten prüfen Berechnung, Verträge, Kalender, Referenz, Auswahl, Daten, Simulation, Vergleiche, Broker, UI, Archiv, Fähigkeiten, Labels, Tradeplan, Analysekarte und Methodikregistry. UI-Tests nutzen einen Mock-DOM.
+
+Die zentrale [Methodikregistry](worker/methodology.js) erzeugt die Seitendokumentation und GET `/api/methodology`; aktive Datenpipeline: `data-v4`. Versionen stammen aus den jeweiligen Modulkonstanten. Verwendete, experimentelle und geplante Funktionen sind getrennt. Kalender-/Tarifstatus gilt je Abruf und Konto, nicht pauschal; reale Anbieterentitlements bleiben V04.
 
 ## Sites und Daten
 
