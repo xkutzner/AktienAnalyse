@@ -1,6 +1,8 @@
 # AktienAnalyse – Entwicklungsroadmap
 
-> Umsetzung V03 vom 05.10.2026: [Methodikregistry](delivery/V03-METHODIKREGISTRY.md) technisch umgesetzt, [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16). Versionen/Referenzformeln/Einheiten/Einflussarten erzeugen API und Seitendoku; aktive, experimentelle und geplante Funktionen getrennt. 17 Offline-Suiten, Build und Artefaktprüfung; keine Daten- oder Prognosefreigabe. Nächster Auftrag V04.
+> V04 vom 05.10.2026: [Datenabnahme-/Beschaffungsprotokoll](delivery/V04-DATENABNAHME.md). I teilweise vorhanden, D blockiert, E nicht erforderlich. Lokaler autorisierter Provider-/Archivzugang fehlt; keine Kontoproben oder echte Providerantworten. Upgrade ohne eigenes Angebot/Entitlements nicht entscheidbar. Nächste unabhängige technische Arbeit V06 vor V05; keine neue Daten-/Prognosefreigabe.
+
+> Umsetzung V03 vom 05.10.2026: [Methodikregistry](delivery/V03-METHODIKREGISTRY.md) technisch umgesetzt, [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16). Versionen/Referenzformeln/Einheiten/Einflussarten erzeugen API und Seitendoku; aktive, experimentelle und geplante Funktionen getrennt. 17 Offline-Suiten, Build und Artefaktprüfung; keine Daten- oder Prognosefreigabe. V04-Blocker und Folgeauftrag sind oben dokumentiert.
 
 > Umsetzung V02 vom 05.10.2026: [Gemeinsame Preisanker](delivery/V02-PREISANKER.md) technisch umgesetzt, [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15). Schlussmarken ausdrücklich vorläufig; nach Einstieg verwenden Karte und Simulator dieselben Fill-/Splitmarken. Reale Daten-/Ausführungsabnahme offen; keine Prognosefreigabe. V03 ist oben dokumentiert.
 

@@ -264,14 +264,14 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 
 ## 7. Lebendes Statusregister
 
-**Fortgeschriebener Stand 05.10.2026:** V01 bis V03 technisch umgesetzt; reale Archiv-/Browser-/Ausführungsabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
+**Fortgeschriebener Stand 05.10.2026:** V01 bis V03 technisch umgesetzt; V04-Zugangsprüfung und Beschaffungsliste dokumentiert, reale Datenabnahme weiter blockiert; Upgrade ohne Angebot/Entitlements nicht entscheidbar. Nächste unabhängige technische Arbeit V06. Reale Archiv-/Browser-/Ausführungsabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
 
 | Paket | I | D | E | Nächster Nachweis / Blocker | PR / Abschluss |
 |---|---|---|---|---|---|
 | V01 | erledigt | offen | nicht erforderlich | Reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | [Paketprotokoll](delivery/V01-KALENDERZEITPUNKT.md), [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14) |
 | V02 | erledigt | offen | nicht erforderlich | Reale Ausführungs-/Maßnahmenabnahme V04/V09; keine Prognosefreigabe | [Paketprotokoll](delivery/V02-PREISANKER.md), [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15) |
 | V03 | erledigt | nicht erforderlich | nicht erforderlich | Keine Daten-/Prognosefreigabe; V04 echte Datenabnahme | [Paketprotokoll](delivery/V03-METHODIKREGISTRY.md), [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16) |
-| V04 | teilweise vorhanden | blockiert | nicht erforderlich | Reale Provider-/Lizenzabnahme | — |
+| V04 | teilweise vorhanden | blockiert | nicht erforderlich | Kein ausführbarer autorisierter Provider-/Archivzugang; Entitlements/Lizenz/Angebot fehlen; Upgrade unentschieden | [Paketprotokoll](delivery/V04-DATENABNAHME.md), 05.10.2026 · Agent V04 |
 | V05 | teilweise vorhanden | offen | nicht erforderlich | Produktiver Lauf/Archiv/Restore | — |
 | V06 | teilweise vorhanden | offen | nicht erforderlich | Instrument-/Kalendernachweis | — |
 | V07 | teilweise vorhanden | offen | nicht erforderlich | Quellenadapter/Freshness | — |
