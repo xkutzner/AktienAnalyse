@@ -1,5 +1,7 @@
 # Paket 05 · Datenfähigkeiten und unabhängige Freigaben
 
+> V04-Fortschreibung 05.10.2026: [Reale Datenabnahme und Beschaffungsliste](delivery/V04-DATENABNAHME.md). Kein ausführbarer autorisierter Provider-/Archivzugang im aktuellen Kontext; tatsächliche Kontoprobe, Lizenz und Archiv weiter blockiert. Upgradeentscheidung nicht entscheidbar ohne Angebot/Entitlements. Keine Änderung an Gates oder Adaptercode.
+
 Basis: main `78a14ca9709901961dacee100d39ce11d22bc30c`. Technisch vorbereitet, tatsächliche Datenabnahme **nicht geprüft**. Kein Prognosenachweis.
 
 ## Zugang und dokumentierte Quellen
