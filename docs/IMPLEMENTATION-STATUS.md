@@ -4,6 +4,10 @@
 
 Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). Paketdetails stehen in den jeweils verlinkten Dateien. Dieser Bericht behauptet keine Prognosegüte.
 
+## Autorisierter Zwischenstand · 06.10.2026
+
+Reihenfolge: **A Datenladen → V11 Haupttabelle/mobile Ansicht → passende V22-Abnahme → einmalige Veröffentlichung der bestehenden Site → Stopp zur Erprobung**. V06 und weitere Roadmappakete werden davor nicht gestartet. [Paket-A-Protokoll](delivery/A-DATENLADEN.md) dokumentiert Ursache, Änderungen, Nachweise und Grenzen. V03 wird nicht erneut implementiert; V04 ist keine abgeschlossene Anbieter-/Lizenz-/Archivabnahme.
+
 ## Lieferplan V01–V24
 
 | Paket | Implementierung | Datenabnahme | Empirie | Nachweis |
@@ -13,7 +17,7 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 | V03 | technisch erledigt, [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16) | nicht erforderlich: reine Registry-/Dokumentationsintegration | nicht erforderlich; keine Prognosefreigabe | [Methodikregistry](delivery/V03-METHODIKREGISTRY.md) |
 | V04 | teilweise vorhanden: Adapter/Prüf- und Beschaffungsliste, [PR #17](https://github.com/xkutzner/AktienAnalyse/pull/17) | blockiert: kein ausführbarer autorisierter Provider-/Archivzugang; Entitlements/Lizenz/Angebot fehlen | nicht erforderlich; keine Prognosefreigabe | [Datenabnahme](delivery/V04-DATENABNAHME.md) |
 
-Nächster unabhängiger Auftrag: V06 Instrumente/Universum/gemeinsame Zeitbasis, danach V05 gemäß Welle 1. V04 bleibt offen; Upgradeentscheidung nicht entscheidbar ohne Angebot/Entitlements. V03 Methodikregistry erzeugt versionsgleiche API-/Seitendokumentation; keine Berechnungsänderung oder Prognosefreigabe. V02 verwendet dieselbe Preisankerfunktion für vorläufige Referenzmarken und modellierte/angegebene tatsächliche Fillmarken; kumulative Splits ändern Marken und Stückzahl gemeinsam. Angegebene Fills sind nicht verifiziert. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
+Nächster unabhängiger Auftrag nach geprüftem Paket A: V11, danach passende V22-Abnahme und einmalige Veröffentlichung; anschließend Stopp zur Erprobung. V06/V05 erst nach neuem Auftrag. V04 bleibt offen; Upgradeentscheidung nicht entscheidbar ohne Angebot/Entitlements. V03 Methodikregistry erzeugt versionsgleiche API-/Seitendokumentation; keine Berechnungsänderung oder Prognosefreigabe. V02 verwendet dieselbe Preisankerfunktion für vorläufige Referenzmarken und modellierte/angegebene tatsächliche Fillmarken; kumulative Splits ändern Marken und Stückzahl gemeinsam. Angegebene Fills sind nicht verifiziert. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
 
 ## In main umgesetzt
 

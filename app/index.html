@@ -41,7 +41,7 @@
     const pending={},versions={research:0,simulation:0,audit:0,calendar:0};
     function invalidate(kind){versions[kind]++;pending[kind]?.abort();pending[kind]=null;return versions[kind]}
     function requestScope(kind){const id=invalidate(kind),controller=new AbortController();pending[kind]=controller;return {id,signal:controller.signal,current:()=>versions[kind]===id}}
-    async function readJson(response){if(response.redirected||response.status===401||response.status===403)throw Error("Anmeldung prüfen: Bitte die Seite neu öffnen.");if(!response.headers.get("content-type")?.includes("application/json"))throw Error("Keine lesbare Datenantwort. Bitte erneut versuchen.");return response.json()}
+    async function readJson(response){if(response.redirected||response.status===401||response.status===403)throw Error("Anmeldung prüfen: Bitte die Seite neu öffnen.");if(!response.headers.get("content-type")?.includes("application/json"))throw Error("Keine lesbare Datenantwort. Bitte erneut versuchen.");let data;try{data=await response.json()}catch{throw Error('Die Datenantwort enthält kein gültiges JSON. Bitte erneut versuchen.')}if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Die Datenantwort hat ein ungültiges Format. Bitte erneut versuchen.');return data}
     function symbolsNow(){return [...new Set(el("symbols").value.split(",").map(x=>x.trim().toUpperCase()).filter(Boolean))]}
     const frequency=x=>Number.isFinite(x)?(x*100).toFixed(1).replace(".",",")+" %":"—";
     const pp=x=>Number.isFinite(x)?(x>0?"+":"")+(x*100).toFixed(1).replace(".",",")+" Prozentpunkte":"—";
@@ -53,9 +53,9 @@
     function render(){
       const rows=stocks.filter(s=>s.qualityUsable===true);
       const openDetails=symbol=>{select(symbol);activateTab(el('tab-details'));el('detail-symbol').focus()};
-      el('candidate-cards').innerHTML=rows.slice(0,3).map((s,i)=>'<article class="candidate-card"><h3>'+safe(s.symbol)+(best?.symbol===s.symbol?' · erster positiver Referenzkandidat':'')+'</h3><span class="evidence">Historischer Vergleich · ohne Kosten</span><strong>'+pct(s.expectedReturn)+'</strong><small>Historischer Ø Strategie-Proxy ohne Kosten in '+(s.sampleCount||0)+' Vergleichsfällen</small><p>'+frequency(s.probabilityTarget)+' erreichten das Preisziel +5 %.</p><small>'+safe(UI_ANALYSIS_CONTRACT.states[s.analysisStatus]||UI_ANALYSIS_CONTRACT.states.unknown)+' · '+safe(s.asOf)+' · '+(Number.isFinite(s.expectedReturn)?'Keine Netto-Prognose':'Zu wenige Vergleichsfälle; keine Ertragsschätzung')+'</small><button class="secondary-btn" data-detail="'+safe(s.symbol)+'">'+safe(s.symbol)+' ansehen</button></article>').join('');
+      el('candidate-cards').innerHTML=rows.slice(0,3).map((s,i)=>'<article class="candidate-card"><h3>'+safe(s.symbol)+(best?.symbol===s.symbol?' · erster positiver Referenzkandidat':'')+'</h3><span class="evidence">Historischer Vergleich · ohne Kosten</span><strong>'+pct(s.expectedReturn)+'</strong><small>Historischer Ø Strategie-Proxy ohne Kosten in '+(s.sampleCount||0)+' Vergleichsfällen</small><p>'+frequency(s.probabilityTarget)+' erreichten das Preisziel +5 %.</p><small>'+safe(UI_ANALYSIS_CONTRACT.states[s.analysisStatus]||UI_ANALYSIS_CONTRACT.states.unknown)+' · '+safe(s.asOf)+(researchState==='ready'?'':' · Veraltet · noch nicht erneut geprüft')+' · '+(Number.isFinite(s.expectedReturn)?'Keine Netto-Prognose':'Zu wenige Vergleichsfälle; keine Ertragsschätzung')+'</small><button class="secondary-btn" data-detail="'+safe(s.symbol)+'">'+safe(s.symbol)+' ansehen</button></article>').join('');
       el('candidate-cards').querySelectorAll('[data-detail]').forEach(b=>b.addEventListener('click',()=>openDetails(b.dataset.detail)));
-      el('stocks').innerHTML=rows.map(s=>'<tr><td><button class="row-button" data-detail="'+safe(s.symbol)+'">'+safe(s.symbol)+'</button><small>'+safe(s.asOf)+'</small></td><td>'+pct(s.expectedReturn)+'<small>Historisch · ohne Kosten</small></td><td>'+frequency(s.probabilityTarget)+'<small>Historische Häufigkeit</small></td><td>'+(s.sampleCount||0)+'</td><td>'+s.score.toFixed(1)+' / 100</td><td>'+pp(s.rel20)+'</td></tr>').join('');
+      el('stocks').innerHTML=rows.map(s=>'<tr><td><button class="row-button" data-detail="'+safe(s.symbol)+'">'+safe(s.symbol)+'</button><small>'+safe(s.asOf)+(researchState==='ready'?'':' · Veraltet · noch nicht erneut geprüft')+'</small></td><td>'+pct(s.expectedReturn)+'<small>Historisch · ohne Kosten</small></td><td>'+frequency(s.probabilityTarget)+'<small>Historische Häufigkeit</small></td><td>'+(s.sampleCount||0)+'</td><td>'+s.score.toFixed(1)+' / 100</td><td>'+pp(s.rel20)+'</td></tr>').join('');
       el('stocks').querySelectorAll('[data-detail]').forEach(b=>b.addEventListener('click',()=>openDetails(b.dataset.detail)));
       el('empty').hidden=rows.length>0;el('empty').textContent=researchState==='loading'?'Kursprüfung läuft…':researchState==='error'?'Analyse fehlgeschlagen. Bitte Watchlist oder Datenquelle prüfen.':researchState==='idle'?'Watchlist geändert. Bitte neu analysieren.':'Keine Aktie erfüllt die Kursprüfung. Details findest du bei der Datenqualität.';
       el('best-title').textContent=best?'Bester Watchlist-Kandidat nach alter Referenz: '+best.symbol:'Kein positiver Watchlist-Kandidat';
@@ -131,14 +131,21 @@
     el('symbols').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();loadResearch()}});
     async function loadResearch(){
       const scope=requestScope('research'),symbols=symbolsNow(),symbolKey=symbols.join(','),button=el('load-button');
+      const previous=analysedSymbols.join(',')===symbolKey&&stocks.length?stocks:null;
       resetWatchlistError();clearAnalysis('loading');resetCalendar();resetAudit();el('view-analysis').setAttribute('aria-busy','true');
       const current=()=>scope.current()&&symbolsNow().join(',')===symbolKey;
       if(!symbols.length||symbols.length>7||symbols.includes('SPY')||symbols.some(s=>!/^[A-Z][A-Z0-9.-]{0,9}$/.test(s))){clearAnalysis('error');el('symbols').setAttribute('aria-invalid','true');el('symbols-error').textContent='Bitte 1–7 US-Symbole eingeben. SPY wird automatisch ergänzt.';el('symbols-error').hidden=false;activateTab(el('tab-analysis'));el('symbols').focus();showBanner('Watchlist prüfen','Bitte 1–7 US-Symbole eingeben. SPY wird automatisch ergänzt.','error');el('view-analysis').setAttribute('aria-busy','false');button.disabled=false;button.textContent='Analyse aktualisieren';return}
       button.disabled=true;button.textContent='Analysiert…';showBanner('Analyse läuft','Wir prüfen Tageskurse und historische Vergleichsfälle.','loading');
+      const retainPrevious=state=>{if(previous){stocks=previous;analysedSymbols=symbols;best=null;researchState=state;render();el('analysis-state').textContent='Veraltet · noch nicht erneut geprüft';el('asof').textContent='Veraltete Ergebnisse: Kurse bis '+previous[0].asOf;el('watchlist-status').textContent='Frühere Ergebnisse bleiben sichtbar. Sie sind veraltet; die erneute Kursprüfung ist nicht abgeschlossen.'}};
+      retainPrevious('loading');
+      const slowTimer=setTimeout(()=>{if(current())showBanner('Anfrage noch in Bearbeitung','Der Abruf dauert länger. Bitte warten; nach spätestens 30 Sekunden kannst du erneut versuchen. Frühere Ergebnisse sind veraltet.','loading')},8000);
+      let timedOut=false;const timeout=setTimeout(()=>{if(current()){timedOut=true;pending.research?.abort()}},30000);
       try{
         const response=await fetch('/api/stocks?symbols='+encodeURIComponent(symbolKey)+'&capital='+encodeURIComponent(currentScenarioCapital()??''),{signal:scope.signal}),result=await readJson(response);if(!current())return;
         if(result.contract&&result.contract.version!==UI_ANALYSIS_CONTRACT.version)throw Error('Analysevertrag geändert; bitte Seite neu laden.');
         if(!response.ok){showQuality(result.dataQuality||[]);throw Error(result.message||'Datenabruf fehlgeschlagen.')}
+        if(result.error||result.status==='error')throw Error(result.message||'Der Server meldet einen Fehler trotz HTTP 200.');
+        if(!Array.isArray(result.stocks)||!Array.isArray(result.dataQuality))throw Error('Die Datenantwort ist unvollständig: Aktien oder Kursprüfung fehlen.');
         const quality=new Map((result.dataQuality||[]).map(q=>[q.symbol,q]));
         stocks=(Array.isArray(result.stocks)?result.stocks:[]).filter(s=>s.qualityUsable===true&&quality.get(s.symbol)?.quality?.usable===true&&quality.get('SPY')?.quality?.usable===true&&quality.get(s.symbol).quality.lastSession===quality.get(s.symbol).quality.expectedLastSession&&s.asOf===quality.get(s.symbol).quality.lastSession);
         el('analysis-state').textContent=UI_ANALYSIS_CONTRACT.states[result.analysisStatus]||UI_ANALYSIS_CONTRACT.states.unknown;
@@ -147,9 +154,10 @@
         const benchmark=result.benchmark;el('market-status').textContent=Number.isFinite(benchmark?.r20)?benchmark.r20>=0?'SPY-Trend steigend':'SPY-Trend fallend':'Unbekannt';el('benchmark').textContent=benchmark?'SPY: '+pct(benchmark.r20)+' über 20 Handelstage · historischer Kursverlauf':'SPY nicht verfügbar';
         const excluded=symbols.filter(symbol=>!stocks.some(s=>s.symbol===symbol));el('watchlist-status').textContent='Analysierte Watchlist: '+symbols.join(', ')+' · '+stocks.length+' / '+symbols.length+' mit bestandener Kursprüfung.'+(excluded.length?' Ausgeschlossen: '+excluded.join(', ')+'.':'');
         render();if(result.backtest)renderBacktest(result.backtest);refreshSimulation();
-        showBanner(stocks.length?'Analyse aktualisiert':'Keine freigegebenen Kandidaten',excluded.length?'Einzelne Kursreihen sind unvollständig oder nicht nutzbar. Gründe findest du bei der Datenqualität.':'Historischer Vergleich ohne Kosten. Kein freigegebener Nettoertrag.','connected');
-      }catch(error){if(!current())return;const qualityText=el('data-quality-output').innerHTML;clearAnalysis('error');el('data-quality-output').innerHTML=qualityText;showBanner('Analyse fehlgeschlagen',error.name==='AbortError'?'Abruf abgebrochen.':error.message||'Datenserver nicht erreichbar. Bitte erneut versuchen.','error');refreshSimulation()}
-      finally{if(current()){button.disabled=false;button.textContent='Analyse aktualisieren';el('view-analysis').setAttribute('aria-busy','false')}}
+        const exclusionReasons=excluded.map(symbol=>{const row=(result.dataQuality||[]).find(q=>q.symbol===symbol);return symbol+': '+(row?.error?.message||row?.quality?.issues?.join(' · ')||'Zu wenig zusammenhängende Kursgeschichte')}).join('; ');
+        showBanner(stocks.length?'Historische Analyse verfügbar · Netto gesperrt':'Daten geliefert, aber nicht beurteilbar',excluded.length?exclusionReasons:'Historischer Vergleich ohne Kosten. Nettoprognose nicht verfügbar: qualifizierte Rohpreise, Kapitalmaßnahmen und historische Datenstände fehlen.','connected');
+      }catch(error){if(!current())return;const qualityText=el('data-quality-output').innerHTML;clearAnalysis('error');el('data-quality-output').innerHTML=qualityText;retainPrevious('stale');showBanner('Anfrage gescheitert',error.name==='AbortError'?(timedOut?'Abruf nach 30 Sekunden abgebrochen. Bitte erneut versuchen.':'Abruf abgebrochen. Bitte erneut versuchen.'):error.message||'Datenserver nicht erreichbar. Bitte erneut versuchen.','error');refreshSimulation()}
+      finally{clearTimeout(slowTimer);clearTimeout(timeout);if(current()){button.disabled=false;button.textContent=researchState==='error'||researchState==='stale'?'Erneut versuchen':'Analyse aktualisieren';el('view-analysis').setAttribute('aria-busy','false')}}
     }
     let toastTimer;function toast(message){const t=el("toast");t.textContent=message;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2300)}
 
@@ -247,5 +255,3 @@
   </script>
 </body>
 </html>
-
-

@@ -11,7 +11,18 @@ function nth(y,m,weekday,n){const d=date(y,m,1);d.setUTCDate(1+(weekday-d.getUTC
 function last(y,m,weekday){const d=date(y,m+1,0);d.setUTCDate(d.getUTCDate()-(d.getUTCDay()-weekday+7)%7);return iso(d)}
 function observed(y,m,d){const t=date(y,m,d);if(t.getUTCDay()===6)t.setUTCDate(d-1);if(t.getUTCDay()===0)t.setUTCDate(d+1);return iso(t)}
 function goodFriday(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31),day=(h+l-7*m+114)%31+1;const t=date(y,month,day);t.setUTCDate(day-2);return iso(t)}
+// Every supported venue uses this fixed calendar. Cache only calendar facts,
+// never prices, current cutoffs, qualification decisions or provider responses.
+// 2021–2027 bounds the cache to at most 2,556 dates per Worker isolate.
+const SESSION_CACHE=new Map();
 export function session(day,mic){
+ if(!SUPPORTED.has(mic)||!/^\d{4}-\d{2}-\d{2}$/.test(day))return null;
+ const y=Number(day.slice(0,4));if(y<2021||y>2027)return null;
+ let result=SESSION_CACHE.get(day);
+ if(!result){result=calendarSession(day,mic);if(result)SESSION_CACHE.set(day,result);}
+ return result?{...result}:null;
+}
+function calendarSession(day,mic){
  if(!SUPPORTED.has(mic)||!/^\d{4}-\d{2}-\d{2}$/.test(day))return null;
  const y=Number(day.slice(0,4));if(y<2021||y>2027)return null;
  const d=new Date(day+'T12:00:00Z');if(iso(d)!==day)return null;
@@ -75,7 +86,12 @@ export async function providerData(endpoint,parameters,env){
  const retrievedAt=new Date().toISOString(),url=new URL('https://api.twelvedata.com/'+endpoint);
  for(const [k,v] of Object.entries(parameters))url.searchParams.set(k,String(v));url.searchParams.set('apikey',env.TWELVEDATA_API_KEY);
  let payload=null,error=null,status=null;
- try{const response=await fetch(url,{signal:AbortSignal.timeout(12000)});status=response.status;payload=await response.json();if(!response.ok||payload.status==='error'){const message=String(payload.message||'');error=Number(payload.code)===429||status===429?'Kreditlimit erreicht':/plan|subscription|upgrade|permission/i.test(message)?'Im Tarif nicht freigeschaltet':'Anbieterfehler HTTP '+status;payload=null}}catch{error='Verbindung, Zeitlimit oder Antwortformat fehlgeschlagen'}
+ try{const response=await fetch(url,{signal:AbortSignal.timeout(12000)});status=response.status;
+  try{payload=await response.json()}catch{error='Anbieterantwort enthält kein gültiges JSON'}
+  if(!error&&(!payload||typeof payload!=='object'||Array.isArray(payload)))error='Anbieterantwort hat ein ungültiges Datenformat';
+  if(!error&&(!response.ok||payload.status==='error'||Number(payload.code)>=400)){const message=String(payload.message||'');error=Number(payload.code)===429||status===429?'Kreditlimit erreicht':/plan|subscription|upgrade|permission/i.test(message)?'Im Tarif nicht freigeschaltet':'Anbieterfehler: HTTP '+status+' / Code '+(Number(payload.code)||'unbekannt');}
+  if(error)payload=null;
+ }catch(cause){error=cause?.name==='TimeoutError'?'Zeitlimit beim Datenanbieter überschritten':cause?.name==='AbortError'?'Anbieterabruf abgebrochen':'Datenanbieter nicht erreichbar'}
  if(payload&&env.TWELVEDATA_API_KEY)payload=JSON.parse(JSON.stringify(payload).split(env.TWELVEDATA_API_KEY).join('[REDACTED]'));
  const provenance={source:'Twelve Data /'+endpoint,parameters,requestedAt:retrievedAt,retrievedAt:new Date().toISOString(),publicationTime:null,availableAt:null,historicalVintage:null,pointInTimeVerified:false,httpStatus:status,period:{from:parameters.start_date||null,to:parameters.end_date||null},unknownFields:['Veröffentlichungszeit','historischer Datenstand']};
  const snapshotId=crypto.randomUUID();let archived=false;
@@ -193,4 +209,3 @@ export function createEventWindow({decisionDate,asOf,mic,observationOnly=false}=
  if(!observationOnly&&Date.parse(asOf)>=Date.parse(regularSessionOpenUtc(regularSessions[0],mic)))return unknown('Nächstes reguläres Open bereits vergangen: neu entscheiden, Einstieg nicht verschieben');
  return {status:'experimental',decisionDate,asOf:new Date(asOf).toISOString(),mic,start:decisionDate,end:regularSessions[19],plannedEndDate:regularSessions[19],regularSessions,boundary:'decision-day-through-session20-inclusive',purpose:observationOnly?'calendar-observation-only':'trade-decision',calendarVersion:decision.calendarVersion};
 }
-

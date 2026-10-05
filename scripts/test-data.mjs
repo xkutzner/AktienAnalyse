@@ -80,3 +80,26 @@ assert.equal(riskAt(riskBars.map(b=>({...b,date:'invalid'})),2,options).openingG
 assert.equal(riskAt(riskBars.map(b=>({...b,volume:0})),2,options).averageDailyTradedValue.value,0);
 
 assert.equal(riskAt(riskBars,2,{...options,actions:qualifiedActions,asOf:'2026-10-02T19:00:00Z'}).averageDailyTradedValue.value,null);
+
+// Package A: memoized calendar results cannot be poisoned by a caller, and
+// unsupported venues/dates are still rejected before a shared date-cache hit.
+const changed=session('2026-10-02','XNAS');changed.open=false;changed.closeLocal='00:00:00';
+assert.equal(session('2026-10-02','XNYS').open,true);assert.equal(session('2026-10-02','XNAS').closeLocal,'16:00:00');
+assert.equal(session('2026-10-02','XETR'),null);assert.equal(session('2026-02-30','XNAS'),null);assert.equal(session('2028-01-03','XNAS'),null);
+const savedFetch=globalThis.fetch;
+try{
+ for(const [body,status,expected] of [[{status:'error',code:429,message:'fake-secret'},200,/Kreditlimit/],[{code:403,message:'upgrade subscription fake-secret'},200,/Tarif/],[{code:400,message:'fake-secret'},200,/HTTP 200.*400/],[null,200,/Datenformat/],[[],200,/Datenformat/]]){
+  globalThis.fetch=async()=>Response.json(body,{status});const result=await providerData('time_series',{symbol:'SYNTHETIC'}, {TWELVEDATA_API_KEY:'fake-secret'});assert.equal(result.payload,null);assert.match(result.error,expected);assert.ok(!JSON.stringify(result).includes('fake-secret'));
+ }
+ globalThis.fetch=async()=>new Response('not json',{status:200});assert.match((await providerData('time_series',{}, {TWELVEDATA_API_KEY:'fake-secret'})).error,/gültiges JSON/);
+ globalThis.fetch=async()=>{throw Object.assign(new Error('fake-secret'),{name:'TimeoutError'})};assert.match((await providerData('time_series',{}, {TWELVEDATA_API_KEY:'fake-secret'})).error,/Zeitlimit/);
+ globalThis.fetch=async()=>{throw new Error('fake-secret')};assert.match((await providerData('time_series',{}, {TWELVEDATA_API_KEY:'fake-secret'})).error,/nicht erreichbar/);
+}finally{globalThis.fetch=savedFetch}
+console.log('Package A: calendar cache isolation/bounds and semantic HTTP200, schema, parse, timeout and secret-safe provider failures passed.');
+// Exhaustive fixed calendar parity: memoization cannot change any covered date.
+const calendarCode=await (await import('node:fs/promises')).readFile(new URL('../worker/data.js',import.meta.url),'utf8');
+const uncached=await import('data:text/javascript;base64,'+Buffer.from(calendarCode+'\nexport {calendarSession};').toString('base64'));
+for(const day=new Date('2021-01-01T12:00:00Z');day.getUTCFullYear()<=2027;day.setUTCDate(day.getUTCDate()+1)){
+ const key=day.toISOString().slice(0,10);for(const mic of ['XNAS','XNYS','ARCX'])assert.deepEqual(session(key,mic),uncached.calendarSession(key,mic),key+' '+mic);
+}
+console.log('Package A: every 2021–2027 supported calendar date matches uncached calculation.');
