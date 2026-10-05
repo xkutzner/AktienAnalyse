@@ -1,5 +1,7 @@
 # AktienAnalyse – Entwicklungsroadmap
 
+> Umsetzung V01 vom 05.10.2026: [Kalenderzeitvertrag](delivery/V01-KALENDERZEITPUNKT.md) technisch korrigiert. Aktuelle Beobachtung und historischer Snapshot-Replay getrennt; reale Archiv-/Browserabnahme offen, keine Prognosefreigabe. Nächster Lieferplanauftrag V02.
+
 > Ergänzung vom 05.10.2026: Das [Produktkonzept](PRODUCT-CONCEPT-20D.md) konkretisiert das neue Zielbild. Der [Lieferplan V01–V24](DELIVERY-PLAN-20D.md) ordnet Fehlerkorrekturen, echte Datenabnahmen, UI, Kaufjournal und Erfolgsmessung in kleine Arbeitspakete ein und enthält die Zuordnung zu den bisherigen Paketen 01–18. Bei fachlichen Zielkonflikten gilt das neuere Konzept; bestehende Implementierungsnachweise bleiben erhalten. Keine automatische Umsetzung oder Freigabe durch diese Dokumentation.
 
 Stand: 04.10.2026 · Grundlage: unabhängiger Review von `xkutzner/AktienAnalyse`, Branch `main`, Commit `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`.
@@ -272,3 +274,4 @@ Der Start von Paket 01 benötigt keine weitere Entscheidung. Vor der wirtschaftl
 **Paket 01 an Sol geben.** Der ausführliche kopierbare Auftrag steht im Reviewbericht in Abschnitt 12. Danach Paket 02, anschließend 03–05. Erst nach Meilenstein 1 den vollständigen Analyseplan aus Phase 2 umsetzen.
 
 Referenz: `AktienAnalyse-Review-2026-10-04.md` mit Codebelegen, reproduzierten Fehlern und Indikatoren-/Quellenvergleich. Diese Roadmap übernimmt dessen Befunde; sie enthält keine neue empirische Prognosevalidierung.
+

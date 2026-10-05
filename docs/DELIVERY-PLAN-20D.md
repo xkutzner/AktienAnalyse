@@ -264,11 +264,11 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 
 ## 7. Lebendes Statusregister
 
-**Initialer Stand dieses Plans:** kein neues V-Paket umgesetzt. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
+**Fortgeschriebener Stand 05.10.2026:** V01 technisch umgesetzt; reale Archiv-/Browserabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
 
 | Paket | I | D | E | Nächster Nachweis / Blocker | PR / Abschluss |
 |---|---|---|---|---|---|
-| V01 | offen | offen | nicht erforderlich | Verzögerter aktueller Kalenderabruf | — |
+| V01 | erledigt | offen | nicht erforderlich | Reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | [Paketprotokoll](delivery/V01-KALENDERZEITPUNKT.md), PR folgt im Abschluss |
 | V02 | offen | offen | nicht erforderlich | Schluss-/Fill-Abweichung, Split | — |
 | V03 | offen | nicht erforderlich | nicht erforderlich | Registry/Seitenabgleich | — |
 | V04 | teilweise vorhanden | blockiert | nicht erforderlich | Reale Provider-/Lizenzabnahme | — |
@@ -346,3 +346,4 @@ Keine Testdaten/-belege mit personenbezogenen Kontoangaben in Git. Große/lizenz
 > Bearbeite ausschließlich V01 aus `docs/DELIVERY-PLAN-20D.md`. Lies das Produktkonzept und die Repository-Regeln, prüfe den aktuellen main-Commit und bereits laufende Arbeit. Korrigiere den Zeitvertrag zwischen UI und `calendar()`, sodass frisch erfolgreich geladene BLS-Termine in der aktuellen Ansicht erscheinen, historische Replay-Entscheidungen aber keine später beobachteten Daten verwenden. Nutze revisionsfähige Snapshots, falls für diese Trennung nötig. Ergänze Tests für erfolgreiche und verzögerte Antwort, Ausfall, Revision, Zeitzone und historische Unzulässigkeit. Keine Rendite-/Rankingänderung, keine Datenfreigabe, keine neue Veröffentlichung. Dokumentiere Umsetzung, reale Prüflücken, Tests, PR und Commit im Paketprotokoll und Statusregister. Merge nur nach den vorhandenen Repository-Regeln mit geprüftem Head. Starte danach nicht automatisch ein weiteres Paket.
 
 Danach V02; vor Datenkauf V04. Wenn echte Quellenzugänge fehlen, unabhängige Dokumentations-/UI-/Journalarbeit wählen und die Datenabnahme blockiert lassen.
+

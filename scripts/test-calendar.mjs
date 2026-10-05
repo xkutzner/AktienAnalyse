@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import worker from '../worker/index.js';
 import {createEventWindow,createTradePlan} from '../worker/data.js';
-import {createEventRevision,readEventChain,projectEvents} from '../worker/events.js';
+import {parseBlsCalendar,createMacroSnapshot,readMacroSnapshot,projectMacroSnapshots,createEventRevision,readEventChain,projectEvents} from '../worker/events.js';
 const original=globalThis.fetch;
 const asOf='2026-10-02T21:00:00Z',mic='XNAS',window=createEventWindow({decisionDate:'2026-10-02',asOf,mic});
 assert.equal(window.end,'2026-10-30');
@@ -40,12 +40,39 @@ try{
  const data=await (await worker.fetch(request,{BUCKET:bucket,TWELVEDATA_API_KEY:'test-secret'})).json();
  assert.equal(data.end,window.end);assert.equal(data.events.length,1);assert.equal(data.events[0].revisionId,first.revisionId);assert.equal(data.risks[0].knownPoints,0);assert.ok(data.risks.every(r=>r.score===null));assert.equal(data.coverage.earnings,'unknown');assert.ok(!JSON.stringify(data).includes('Future changed title'));assert.ok(calls.every(url=>url.includes('bls.gov')));
  globalThis.fetch=async()=>{throw Error('offline')};
- const fallback=await (await worker.fetch(new Request('https://test.local/api/calendar?symbols=AAPL&mic=XNAS&asOf=2026-10-05T12:00:00Z'),{})).json();assert.ok(fallback.events.some(e=>e.title.includes('Ersatzdatenstand')));assert.ok(fallback.events.every(e=>Date.parse(e.knownAt)<=Date.parse(fallback.window.asOf)));assert.ok(fallback.risks.every(r=>r.score===null));
- assert.equal((await worker.fetch(new Request('https://test.local/api/calendar?symbols=AAPL'),{})).status,400);
+ const fallback=await (await worker.fetch(new Request('https://test.local/api/calendar?symbols=AAPL&mic=XNAS&mode=current'),{})).json();assert.ok(fallback.events.some(e=>e.title.includes('Ersatzdatenstand')));assert.ok(fallback.events.every(e=>Date.parse(e.knownAt)<=Date.parse(fallback.window.asOf)));assert.ok(fallback.risks.every(r=>r.score===null));
+ assert.equal((await worker.fetch(new Request('https://test.local/api/calendar?symbols=AAPL&mode=historical'),{})).status,400);
  assert.equal((await worker.fetch(new Request('https://test.local/api/calendar?symbols=bad!&asOf='+asOf+'&mic='+mic),{})).status,400);
  assert.equal((await worker.fetch(new Request('https://test.local/api/calendar?symbols=AAPL',{method:'POST'}),{})).status,405);
  const imported=await (await worker.fetch(new Request('https://test.local/api/events',{method:'POST',body:JSON.stringify(input)}),{BUCKET:bucket})).json();assert.equal(imported.confirmationStatus,'claimed-unverified');assert.ok(imported.knownAt>=imported.observedAt);
  assert.equal((await worker.fetch(new Request('https://test.local/api/events?id='+imported.revisionId),{BUCKET:bucket})).status,200);
  assert.equal((await worker.fetch(new Request('https://test.local/api/events?id=bad'),{BUCKET:bucket})).status,400);
+ // Deterministic clock simulates a full second passing while the response is in flight.
+ const NativeDate=globalThis.Date;let now=Date.parse('2026-10-05T12:00:00Z');
+ globalThis.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[now]))}static now(){return now}};
+ try{
+  const ics=title=>'BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART;TZID=America/New_York:20261014T083000\nSUMMARY:'+title+'\nEND:VEVENT\nEND:VCALENDAR';
+  globalThis.fetch=async()=>{now+=1000;return new Response(ics('Consumer Price Index'));};
+  const current=async env=> (await worker.fetch(new Request('https://test.local/api/calendar?mode=current&symbols=AAPL&mic=XNAS'),env)).json();
+  const live=await current({BUCKET:bucket});assert.equal(live.mode,'current');assert.equal(live.archiveStatus,'archived');assert.equal(live.events.find(e=>e.title==='Consumer Price Index').knownAt,'2026-10-05T12:00:01.000Z');assert.equal(live.window.asOf,live.displayAsOf);assert.ok(live.events.every(e=>Date.parse(e.observedAt)<=Date.parse(live.displayAsOf)));assert.equal(live.coverage.earnings,'unknown');assert.ok(live.risks.every(r=>r.score===null));
+  const firstSnapshot=live.macroSnapshotIds[0];assert.ok(firstSnapshot);await readMacroSnapshot(bucket,firstSnapshot);
+  const ambiguous=await createMacroSnapshot(ics('Producer Price Index'),live.displayAsOf);memory.set('macro/bls/'+ambiguous.snapshotId+'.json',JSON.stringify(ambiguous));assert.equal((await worker.fetch(new Request('https://test.local/api/calendar?mode=historical&symbols=AAPL&mic=XNAS&asOf=2026-10-05T12:00:01Z&macroSnapshotIds='+firstSnapshot+','+ambiguous.snapshotId),{BUCKET:bucket})).status,409);
+  globalThis.fetch=async()=>{now+=1000;return new Response(ics('Producer Price Index'));};const revised=await current({BUCKET:bucket});assert.ok(!revised.events.some(e=>e.title==='Consumer Price Index'));assert.ok(revised.events.some(e=>e.title==='Producer Price Index'));assert.notEqual(firstSnapshot,revised.macroSnapshotIds[0]);
+  globalThis.fetch=async()=>{throw Error('historical must never fetch')};
+  const history=async time=>(await worker.fetch(new Request('https://test.local/api/calendar?mode=historical&symbols=AAPL&mic=XNAS&asOf='+time+'&macroSnapshotIds='+[firstSnapshot,...revised.macroSnapshotIds].join(',')),{BUCKET:bucket})).json();
+  assert.equal((await history('2026-10-05T12:00:00Z')).events.length,0);assert.equal((await history('2026-10-05T12:00:01Z')).events[0].title,'Consumer Price Index');assert.equal((await history('2026-10-05T12:00:02Z')).events[0].title,'Producer Price Index');
+  const noArchive=(await worker.fetch(new Request('https://test.local/api/calendar?mode=historical&symbols=AAPL&mic=XNAS&asOf=2026-10-05T12:00:02Z'),{}));assert.equal((await noArchive.json()).events.length,0);
+  const failed=await current({BUCKET:bucket});assert.equal(failed.sources.find(s=>s.name==='BLS').ok,false);assert.equal(failed.macroSnapshotIds.length,0);assert.ok(failed.events.every(e=>!e.snapshotId));
+  globalThis.fetch=async()=>new Response('BEGIN:VCALENDAR\nEND:VCALENDAR');const empty=await current({BUCKET:bucket});assert.equal(empty.sources.find(s=>s.name==='BLS').ok,true);assert.ok(!empty.events.some(e=>e.source.includes('bls.gov')));
+  globalThis.fetch=async()=>new Response(ics('Consumer Price Index'));const unavailable=await current({});assert.equal(unavailable.archiveStatus,'unavailable');assert.equal(unavailable.macroSnapshotIds.length,0);assert.ok(unavailable.events.some(e=>e.title==='Consumer Price Index'));
+  now=Date.parse('2026-10-05T16:00:00Z');const intraday=await current({});assert.equal(intraday.window.purpose,'calendar-observation-only');assert.equal(createEventWindow({decisionDate:intraday.window.decisionDate,asOf:intraday.displayAsOf,mic}).status,'unknown');
+  const brokenArchive=await current({BUCKET:{put:async()=>{throw Error('offline')}}});assert.equal(brokenArchive.archiveStatus,'failed');
+  assert.equal((await worker.fetch(new Request('https://test.local/api/calendar?mode=current&asOf=2026-10-05T12:00:00Z&symbols=AAPL&mic=XNAS'),{})).status,400);
+  const utc=parseBlsCalendar('BEGIN:VEVENT\nDTSTART:20261015T003000Z\nSUMMARY:Consumer Price Index\nEND:VEVENT')[0];assert.equal(utc.date,'2026-10-14');assert.equal(utc.time,'00:30 UTC');
+  assert.equal(parseBlsCalendar(ics('Consumer Price Index').replace('END:VEVENT','STATUS:CANCELLED\nEND:VEVENT')).length,0);assert.throws(()=>parseBlsCalendar(ics('Consumer Price Index').replace('083000','253000')));assert.throws(()=>parseBlsCalendar(ics('Consumer Price Index').replace('20261014','20260230')));
+  assert.equal(parseBlsCalendar(ics('Consumer Price Index'))[0].time,'08:30 US Eastern');assert.throws(()=>parseBlsCalendar(ics('Consumer Price Index').replace('America/New_York','Europe/Berlin')));
+  const originalSnapshot=memory.get('macro/bls/'+firstSnapshot+'.json');memory.set('macro/bls/'+firstSnapshot+'.json',originalSnapshot.replace('Consumer Price Index','tampered'));await assert.rejects(readMacroSnapshot(bucket,firstSnapshot));memory.set('macro/bls/'+firstSnapshot+'.json',originalSnapshot);
+ }finally{globalThis.Date=NativeDate}
  console.log('Calendar/event checks passed: exact session20, PIT revisions, late/cancelled/empty coverage, evidence limits, immutable imports, delayed live responses, no earnings requests.');
 }finally{globalThis.fetch=original}
+

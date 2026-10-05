@@ -182,7 +182,7 @@ export function riskAt(bars,decisionIndex,{priceBasis='adjusted',volumeBasis='un
 }
 
 // Price-free decision window shared with trade plans; includes the decision day and session20.
-export function createEventWindow({decisionDate,asOf,mic}={}){
+export function createEventWindow({decisionDate,asOf,mic,observationOnly=false}={}){
  const unknown=reason=>({status:'unknown',reason});
  if(!asOf||!Number.isFinite(Date.parse(asOf)))return unknown('Entscheidungszeit fehlt');
  const completed=lastCompleted(new Date(asOf),mic),decision=session(decisionDate,mic);
@@ -190,6 +190,7 @@ export function createEventWindow({decisionDate,asOf,mic}={}){
  const regularSessions=[];let cursor=new Date(decisionDate+'T12:00:00Z');
  for(let i=0;i<60&&regularSessions.length<20;i++){cursor.setUTCDate(cursor.getUTCDate()+1);const day=cursor.toISOString().slice(0,10),s=session(day,mic);if(!s)return unknown('Enddatum außerhalb bekannten Kalenders');if(s.open)regularSessions.push(day)}
  if(regularSessions.length!==20)return unknown('20 reguläre Sitzungen nicht bestimmbar');
- if(Date.parse(asOf)>=Date.parse(regularSessionOpenUtc(regularSessions[0],mic)))return unknown('Nächstes reguläres Open bereits vergangen: neu entscheiden, Einstieg nicht verschieben');
- return {status:'experimental',decisionDate,asOf:new Date(asOf).toISOString(),mic,start:decisionDate,end:regularSessions[19],plannedEndDate:regularSessions[19],regularSessions,boundary:'decision-day-through-session20-inclusive',calendarVersion:decision.calendarVersion};
+ if(!observationOnly&&Date.parse(asOf)>=Date.parse(regularSessionOpenUtc(regularSessions[0],mic)))return unknown('Nächstes reguläres Open bereits vergangen: neu entscheiden, Einstieg nicht verschieben');
+ return {status:'experimental',decisionDate,asOf:new Date(asOf).toISOString(),mic,start:decisionDate,end:regularSessions[19],plannedEndDate:regularSessions[19],regularSessions,boundary:'decision-day-through-session20-inclusive',purpose:observationOnly?'calendar-observation-only':'trade-decision',calendarVersion:decision.calendarVersion};
 }
+

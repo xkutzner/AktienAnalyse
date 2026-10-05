@@ -235,9 +235,9 @@
     }
     el('calendar-mic').addEventListener('change',resetCalendar);
     el('calendar-button').addEventListener('click',async()=>{
-      const scope=requestScope('calendar'),key=symbolsNow().join(','),mic=el('calendar-mic').value,asOf=new Date().toISOString(),button=el('calendar-button');calendarData=null;renderCalendarSummary();button.disabled=true;el('calendar-output').textContent='Termine werden geprüft…';
+      const scope=requestScope('calendar'),key=symbolsNow().join(','),mic=el('calendar-mic').value,button=el('calendar-button');calendarData=null;renderCalendarSummary();button.disabled=true;el('calendar-output').textContent='Termine werden geprüft…';
       const current=()=>scope.current()&&symbolsNow().join(',')===key&&el('calendar-mic').value===mic;
-      try{const response=await fetch('/api/calendar?symbols='+encodeURIComponent(key)+'&mic='+encodeURIComponent(mic)+'&asOf='+encodeURIComponent(asOf),{cache:'no-store',signal:AbortSignal.any([scope.signal,AbortSignal.timeout(18000)])}),data=await readJson(response);if(!current())return;if(!response.ok)throw Error(data.message||'Kalenderdienst nicht verfügbar.');if(!Array.isArray(data.events)||!Array.isArray(data.risks)||!Array.isArray(data.sources))throw Error('Kalenderantwort unvollständig.');
+      try{const response=await fetch('/api/calendar?mode=current&symbols='+encodeURIComponent(key)+'&mic='+encodeURIComponent(mic),{cache:'no-store',signal:AbortSignal.any([scope.signal,AbortSignal.timeout(18000)])}),data=await readJson(response);if(!current())return;if(!response.ok)throw Error(data.message||'Kalenderdienst nicht verfügbar.');if(!Array.isArray(data.events)||!Array.isArray(data.risks)||!Array.isArray(data.sources))throw Error('Kalenderantwort unvollständig.');
         calendarData=data;renderCalendarSummary();
         el('calendar-output').innerHTML='<p>Geprüft: '+safe(new Date(data.checkedAt).toLocaleString('de-DE',{timeZone:'Europe/Berlin'}))+' · '+safe(data.start)+' bis '+safe(data.end)+'</p><div class="table-wrap" tabindex="0" aria-label="Tabelle, bei Bedarf horizontal scrollen"><table><thead><tr><th>Datum</th><th>Termin</th><th>Zeit laut Quelle</th><th>Ereignispunkte</th><th>Quelle</th></tr></thead><tbody>'+data.events.map(e=>'<tr><td>'+safe(e.date)+'</td><td>'+safe(e.title)+'</td><td>'+safe(e.time)+' · '+safe(e.confirmationStatus)+' · verfügbar '+safe(e.knownAt)+'</td><td>'+e.points+'</td><td><a target="_blank" rel="noopener" href="'+safe(e.source)+'">Quelle</a></td></tr>').join('')+'</tbody></table></div>'+(!data.events.length?'<p>Keine Termine gefunden · bestätigte Unternehmensabdeckung unbekannt; keine Ereignisfreiheit.</p>':'')+data.sources.map(source=>'<p><b>'+safe(source.name)+'</b> · '+safe(source.message)+'</p>').join('');
       }catch(error){if(current()){el('calendar-output').textContent=(error.name==='TimeoutError'?'Kalenderabruf hat das Zeitlimit überschritten.':error.message||'Abruf fehlgeschlagen')+' · Risiko unbekannt.';renderCalendarSummary()}}finally{if(current())button.disabled=false}
@@ -246,4 +246,5 @@
   </script>
 </body>
 </html>
+
 
