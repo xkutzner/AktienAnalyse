@@ -10,8 +10,7 @@ Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-RO
 |---|---|---|---|---|
 | V01 | technisch erledigt, [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14), Merge im Abschluss | offen: reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | nicht erforderlich; keine Prognosefreigabe | [Kalenderzeitpunkt](delivery/V01-KALENDERZEITPUNKT.md) |
 | V02 | technisch erledigt, [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15) | offen: reale Rohkurs-/Fill-/Maßnahmen-/Kostenabnahme V04/V09 | nicht erforderlich; keine Prognosefreigabe | [Preisanker](delivery/V02-PREISANKER.md) |
-
-| V03 | technisch erledigt | nicht erforderlich: reine Registry-/Dokumentationsintegration | nicht erforderlich; keine Prognosefreigabe | [Methodikregistry](delivery/V03-METHODIKREGISTRY.md) |
+| V03 | technisch erledigt, [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16) | nicht erforderlich: reine Registry-/Dokumentationsintegration | nicht erforderlich; keine Prognosefreigabe | [Methodikregistry](delivery/V03-METHODIKREGISTRY.md) |
 
 Nächster Auftrag: V04 reale Datenabnahme. V03 Methodikregistry erzeugt versionsgleiche API-/Seitendokumentation; keine Berechnungsänderung oder Prognosefreigabe. V02 verwendet dieselbe Preisankerfunktion für vorläufige Referenzmarken und modellierte/angegebene tatsächliche Fillmarken; kumulative Splits ändern Marken und Stückzahl gemeinsam. Angegebene Fills sind nicht verifiziert. Aktueller Kalender fixiert `displayAsOf` nach Quellenbeobachtung/Archivversuch. Historischer Modus ruft keine heutige Makroquelle ab und nutzt ausschließlich explizite hashgeprüfte Snapshot-IDs. Leere/unvollständige Quellen belegen keine Ereignisfreiheit.
 

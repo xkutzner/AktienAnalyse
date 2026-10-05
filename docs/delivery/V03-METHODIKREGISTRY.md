@@ -3,7 +3,7 @@
 ## Auftrag und Stand
 - Ziel / Nichtziel: Versionsgleiche verständliche Methodik aus einer Registry; keine neue Berechnung, Rangfolge, Gewichtung oder Datenfreigabe.
 - Ausgangscommit und Datum: main `42e6fc14083dba423423547228212c7711def0cb`, 05.10.2026; V02/PR #15 gemergt.
-- Verantwortlicher / aktueller Status: eigener Implementierungsagent V03, Branch `delivery/v03-methodology-registry`; technisch erledigt, PR-/Mergeabschluss unten.
+- Verantwortlicher / aktueller Status: eigener Implementierungsagent V03, Branch `delivery/v03-methodology-registry`; technisch erledigt, [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16); geprüfter Head/Mergeabschluss unten.
 - Bezug: Produktkonzept §§ 5, 6, 13, Lieferplan V03, bestehende Versionen aus V01/V02 und Paketen 01–11.
 - Abhängigkeiten / offene Zugänge: Codeinventar vollständig; kein Anbieterzugang für dieses Paket nötig. Reale Entitlements/Daten/Archiv bleiben V04.
 
@@ -45,6 +45,6 @@
 - I: erledigt (Registry/API/Seitendoku + Regression). D: nicht erforderlich für reine Registryintegration; übergreifende reale Datenabnahme offen V04. E: nicht erforderlich, kein Modellversuch; übergreifende Empirie offen V13/V16.
 
 ## Abschluss
-- PR / getesteter Head / Mergecommit: nach PR-Erstellung verlinkt; exakter finaler Test-/Mergehead im PR-Prüfkommentar, Mergecommit ist GitHub-PR-Metadatum (keine selbstreferenzierende Commit-ID).
+- PR / getesteter Head / Mergecommit: [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16); exakter finaler Test-/Mergehead im PR-Prüfkommentar, Mergecommit ist GitHub-PR-Metadatum (keine selbstreferenzierende Commit-ID).
 - Restpunkte: V04 reale Anbieter-/Datenabnahme, V09 qualifizierte Nettolabels, V13/V16 Empirie, V22 echte Browser-/Nutzertests.
 - Produktfreigabe: jetzt zulässig sind korrekte Versionen und nachvollziehbare historische/experimentelle Methodik; keine Nettoprognose, Kaufempfehlung oder empirische Überlegenheit.
