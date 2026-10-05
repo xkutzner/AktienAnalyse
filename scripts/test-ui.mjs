@@ -22,8 +22,9 @@ class Node {
 }
 const nodes={};for(const m of html.matchAll(/<([a-z][\w-]*)\b([^>]*\bid="[^>]+)>/g)){const a=attrs(m[2]);assert.ok(!nodes[a.id],'unique id '+a.id);nodes[a.id]=new Node(m[1],a)}
 const tabs=['tab-analysis','tab-details','tab-settings'].map(id=>nodes[id]);
-const requests=[];const fetch=(url,options={})=>new Promise(resolve=>requests.push({url,options,resolve}));
-const context=vm.createContext({document:{getElementById:id=>{assert.ok(nodes[id],'DOM id '+id);return nodes[id]},querySelectorAll:s=>s==='[role="tab"]'?tabs:[]},localStorage:{getItem:()=>null,setItem(){}},fetch,AbortController,AbortSignal,Response,Number,JSON,Object,Array,Map,Set,Intl,Date,Math,Error,String,setTimeout:()=>1,clearTimeout(){}});
+const requests=[];const fetch=(url,options={})=>new Promise((resolve,reject)=>requests.push({url,options,resolve,reject}));
+const timers=new Map();let timerId=0;const schedule=(fn,delay)=>{timers.set(++timerId,{fn,delay});return timerId};
+const context=vm.createContext({document:{getElementById:id=>{assert.ok(nodes[id],'DOM id '+id);return nodes[id]},querySelectorAll:s=>s==='[role="tab"]'?tabs:[]},localStorage:{getItem:()=>null,setItem(){}},fetch,AbortController,AbortSignal,Response,Number,JSON,Object,Array,Map,Set,Intl,Date,Math,Error,String,setTimeout:schedule,clearTimeout:id=>timers.delete(id)});
 vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],context);
 assert.equal(vm.runInContext('pct(.02)',context),'+2,0 %');assert.equal(vm.runInContext('frequency(.6)',context),'60,0 %');assert.equal(vm.runInContext('pp(.02)',context),'+2,0 Prozentpunkte');
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -116,3 +117,23 @@ const missingLoad=vm.runInContext('loadResearch()',context);await respond(reques
 assert.equal(vm.runInContext('stocks.length',context),0);assert.equal(nodes['best-return'].textContent,'—');
 assert.ok(!nodes['detail-symbol'].innerHTML.includes('AAPL'));assert.match(nodes['analysis-card'].innerHTML,/Nicht beurteilbar/);
 console.log('Paket10 Mock-DOM: invalid/empty watchlist focus and linked error, no invalid fetch, recovery, negative observations and missing benchmark coverage. Real browser/screenreader acceptance remains unavailable.');
+// Package A: long-running, aborted, semantic 200 and malformed replies retain
+// useful same-watchlist information only with an explicit stale status.
+nodes.symbols.value='AAPL';await nodes.symbols.fire('input');
+let work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),fixture(['AAPL']));await work;
+work=vm.runInContext('loadResearch()',context);let req=requests.shift();
+assert.equal(nodes['load-button'].disabled,true);assert.match(nodes.stocks.innerHTML,/Veraltet/);
+[...timers.values()].find(t=>t.delay===8000).fn();assert.match(nodes['banner-title'].textContent,/noch in Bearbeitung/);
+[...timers.values()].find(t=>t.delay===30000).fn();assert.equal(req.options.signal.aborted,true);
+req.reject(Object.assign(new Error('aborted'),{name:'AbortError'}));await work;
+assert.equal(vm.runInContext('researchState',context),'stale');assert.match(nodes.stocks.innerHTML,/AAPL/);assert.match(nodes.stocks.innerHTML,/Veraltet/);assert.match(nodes['banner-text'].textContent,/30 Sekunden/);assert.equal(nodes['load-button'].textContent,'Erneut versuchen');assert.equal(nodes['paper-button'].disabled,true);
+for(const body of [{error:'provider',message:'Provider meldet Fehler'}, {status:'error',message:'Semantischer Fehler'}, {stocks:[]}, null]){
+ work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),body);await work;
+ assert.equal(vm.runInContext('researchState',context),'stale');assert.match(nodes['banner-title'].textContent,/gescheitert/);assert.equal(nodes['load-button'].disabled,false);
+}
+work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),fixture(['AAPL']));await work;
+assert.equal(vm.runInContext('researchState',context),'ready');assert.ok(!nodes.stocks.innerHTML.includes('Veraltet'));assert.match(nodes['banner-title'].textContent,/Historische Analyse verfügbar/);
+const partial=fixture(['AAPL','MSFT']);partial.dataQuality[1].quality.usable=false;partial.dataQuality[1].quality.issues=['Letzter Tageskurs fehlt'];
+nodes.symbols.value='AAPL,MSFT';await nodes.symbols.fire('input');work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),partial);await work;
+assert.match(nodes.stocks.innerHTML,/AAPL/);assert.ok(!nodes.stocks.innerHTML.includes('MSFT'));assert.match(nodes['banner-text'].textContent,/MSFT: Letzter Tageskurs fehlt/);
+console.log('Package A: slow/abort/retry, retained stale results, semantic HTTP200/schema errors and concrete partial-result reasons passed (synthetic DOM, no live acceptance).');

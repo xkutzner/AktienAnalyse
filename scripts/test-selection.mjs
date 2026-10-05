@@ -46,3 +46,17 @@ assert.deepEqual(validatePricePrefix(future,'all',dates[t]),prefix,'future raw d
 assert.equal(validatePrices(future,'all',new Date(dates.at(-1)+'T23:00:00Z')).usable,false,'current strict quality still rejects defects');
 const past=structuredClone(payload);past.values.push({...past.values[t]});assert.equal(validatePricePrefix(past,'all',dates[t]).usable,false,'known duplicate blocks decision');
 console.log('Selection-v2: A/B, unknown outcomes, SPY independence, rebuilt fit, cash and raw prefix quality passed.');
+// Package A: per-decision benchmark memoization preserves complete outputs,
+// including duplicates/gaps in the known prefix and future defects.
+const historyCore=source.slice(source.indexOf('function historicalBacktest('),source.indexOf('\nasync function calendar('));
+const loadHistory=async code=>import('data:text/javascript;base64,'+Buffer.from('import {session,validatePricePrefix} from '+JSON.stringify(new URL('../worker/data.js',import.meta.url).href)+';\nconst HORIZON=20,TARGET=.05,MIN_ANALOGS=12;\n'+code+'\nexport {historicalBacktest};').toString('base64'));
+const optimized=await loadHistory(historyCore),unmemoized=await loadHistory(historyCore.replace('&&benchmarkUsable(index)','&&validatePricePrefix(benchmark.pricePayload,\'all\',dates[index]).usable'));
+const historyDownloads=[...stocks,{symbol:'SPY',bars:spy}].map(stock=>({...stock,quality:{meta,expectedLastSession:dates.at(-1)},pricePayload:{meta,values:stock.bars.map(bar=>({...bar,datetime:bar.date}))}}));
+for(const defect of ['none','known duplicate','missing benchmark','future invalid']){
+ const input=structuredClone(historyDownloads);
+ if(defect==='known duplicate')input[2].pricePayload.values.push({...input[2].pricePayload.values[300]});
+ if(defect==='missing benchmark')input[2].pricePayload.values.splice(300,1);
+ if(defect==='future invalid')input[2].pricePayload.values[800].low=-1;
+ assert.deepEqual(optimized.historicalBacktest(input,['A','B']),unmemoized.historicalBacktest(input,['A','B']),defect);
+}
+console.log('Package A: full historical output parity with uncached benchmark prefixes, duplicates/gaps and future defects passed.');

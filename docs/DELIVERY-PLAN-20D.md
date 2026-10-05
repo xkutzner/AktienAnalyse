@@ -70,6 +70,10 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 
 ## 4. Empfohlene Reihenfolge und nutzbare Zwischenziele
 
+**Aktueller Nutzerauftrag 06.10.2026 (Europe/Berlin): A Datenladen/Ende-zu-Ende-Diagnose → V11 verständliche Haupttabelle/mobile Oberfläche → passende V22-Betriebsabnahme → einmalige Veröffentlichung auf der bestehenden Site → STOPP zur Nutzererprobung.** V06 und weitere Pakete sind bis zur Erprobung zurückgestellt. V01–V03 bleiben umgesetzt; V04 reale umfassende Datenabnahme bleibt offen. Die nachfolgenden Wellen sind die spätere Grundplanung, kein Auftrag zur automatischen Fortsetzung.
+
+Paket A: [Diagnose und Korrektur](delivery/A-DATENLADEN.md). Reale Probe, technische Korrektur und weiterhin gesperrte Nettoprognose werden getrennt dokumentiert.
+
 **Welle 1 – korrekte Grundlagen:** V01 → V02 → V03 → V04 → V06 → V05.
 
 **Welle 2 – verständliche Analyse:** V07 → V08 → V11 → V09 → V10 → V12. UI-Vertrag vor V11 festhalten; V11 zunächst mit korrekten Unbekannt-Zuständen liefern und nach V12 echte Szenarien übernehmen.
@@ -264,7 +268,7 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 
 ## 7. Lebendes Statusregister
 
-**Fortgeschriebener Stand 05.10.2026:** V01 bis V03 technisch umgesetzt; V04-Zugangsprüfung und Beschaffungsliste dokumentiert, reale Datenabnahme weiter blockiert; Upgrade ohne Angebot/Entitlements nicht entscheidbar. Nächste unabhängige technische Arbeit V06. Reale Archiv-/Browser-/Ausführungsabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
+**Fortgeschriebener Stand 05.10.2026:** V01 bis V03 technisch umgesetzt; V04-Zugangsprüfung und Beschaffungsliste dokumentiert, reale Datenabnahme weiter blockiert; Upgrade ohne Angebot/Entitlements nicht entscheidbar. Vorübergehende Priorität laut Nutzerauftrag: A → V11 → passende V22 → bestehende Site veröffentlichen → Stopp zur Erprobung; V06 zurückgestellt. Reale Archiv-/Browser-/Ausführungsabnahme offen. „Teilweise vorhanden“ verweist auf Codegrundlagen aus dem Ausgangscommit, nicht auf neue Abnahme. Bei jedem Paketstart ersetzen: Verantwortlicher, Datum, PR/Commit und Nachweis. E = nicht erforderlich bei reinen Softwarekorrekturen; das macht keine Modellgüte frei.
 
 | Paket | I | D | E | Nächster Nachweis / Blocker | PR / Abschluss |
 |---|---|---|---|---|---|

@@ -291,7 +291,11 @@ function historicalBacktest(downloads, symbols){
  while(cursor.toISOString().slice(0,10)<=benchmark.quality.expectedLastSession){const day=cursor.toISOString().slice(0,10);if(session(day,benchmark.quality.meta.mic_code)?.open)dates.push(day);cursor.setUTCDate(cursor.getUTCDate()+1)}
  const align=bars=>{const map=new Map(bars.map(bar=>[bar.date,bar]));return dates.map(day=>map.get(day)||null)};
  const marketBars=align(benchmark.bars),marketFeatures=dates.map((_,i)=>featureAt(marketBars,marketBars,i));
- const series=downloads.filter(item=>symbols.includes(item.symbol)&&item.bars?.length).map(item=>({symbol:item.symbol,bars:align(item.bars),historicalQuality:index=>validatePricePrefix(item.pricePayload,'all',dates[index]).usable&&validatePricePrefix(benchmark.pricePayload,'all',dates[index]).usable}));
+ // The same immutable benchmark prefix is checked for every watchlist title.
+ // Reuse that exact decision-date result only within this calculation.
+ const benchmarkQuality=new Map();
+ const benchmarkUsable=index=>{if(!benchmarkQuality.has(index))benchmarkQuality.set(index,validatePricePrefix(benchmark.pricePayload,'all',dates[index]).usable);return benchmarkQuality.get(index)};
+ const series=downloads.filter(item=>symbols.includes(item.symbol)&&item.bars?.length).map(item=>({symbol:item.symbol,bars:align(item.bars),historicalQuality:index=>validatePricePrefix(item.pricePayload,'all',dates[index]).usable&&benchmarkUsable(index)}));
  const records=Object.fromEntries(series.map(stock=>[stock.symbol,buildRecords(stock.bars,marketBars,marketFeatures)]));
  return {...walkForward(series,records,marketBars,marketFeatures,dates),validationStatus:'selection-v2-retrospective-only',pointInTimeVerified:false,warning:'Präfixbasierte Auswahl auf heute abgerufener bereinigter Historie; historische Verfügbarkeit und Rohkursausführung nicht belegt. Keine geprüfte Prognosegüte.'};
 }
