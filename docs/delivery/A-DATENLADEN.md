@@ -58,3 +58,13 @@ Im Paket-A-Kontext wurde kein Site-Secret gelesen; fehlendes lokales Environment
 - I: technisch umgesetzt und offline geprüft. D: reale Prüfung separat durch Orchestrator/V22, keine alleinige HTTP200-Freigabe. E: nicht erforderlich für Softwarekorrektur; keine Prognoseempirie.
 - PR, getesteter Head und Mergecommit: autoritative GitHub-PR-Metadaten und finaler Prüfkommentar; Orchestrator prüft und mergt erst getesteten Head.
 - Deployment in diesem Paket: nicht erfolgt. Weiter ausschließlich V11 im frischen Paketkontext nach geprüftem Merge; danach passende V22, einmalige bestehende Siteveröffentlichung und Stopp.
+
+## Fortschreibung nach A-Merge · 06.10.2026
+
+PR #18 geprüft gemergt: getesteter Head `17131a27dcb8f7e8b56e4d589ecd197d79578a01`, Merge `2f1cc23b9c248614fd27d8975266aedd50d7da85`. Die synthetisch nachgewiesene CPU-Blockade ist eine passende Produktionshypothese; ohne echten JSON-/Browserpfad ist sie **keine bestätigte vollständige Produktionsfehlerursache**.
+
+Orchestrator hat die bestehende Sites-Version 17 lesend zugeordnet: Sites-Sourcecommit `3948603e19c4a66738ec0556bafe3fd8362249cb`, erfolgreicher Deployment `appgdep_6ac3d6f480588191a1d50c8501439a6c` vom 05.10.2026 16:58:22Z, Environmentrevision 6. Das veröffentlichte Artefakt `dist/server/index.js` stimmt bytegleich mit `worker/index.js` überein und enthält GitHub-SOURCE_COMMIT `42e6fc14083dba423423547228212c7711def0cb` (V02-Merge). Alle 67 GitHub-getrackten Blobs dieses Commits entsprechen der gelesenen Sites-Quelle; drei weitere Dateien sind generiert. V03/V04 und Paket A waren damit bisher nicht veröffentlicht. Sites- und GitHub-Commit-IDs sind verschiedene Referenzen; die Zuordnung stützt sich auf Blob-/Artefaktvergleich.
+
+Erneut gelesene Produktionslogs: mehrere HTTP200-Antworten mit 11.655–14.740 ms Wandzeit und 9.280–11.547 ms CPU; letzter abgebrochener Abruf 05.10.2026 22:30:46Z mit 8.751 ms Wandzeit / 7.684 ms CPU. Kein JSON-Inhalt in diesen Logs, kein Beweis brauchbarer Ergebnisse oder einer UI-Ursache.
+
+Private Site zeigt Anmeldung. Loginaktion zu auth.openai.com durch Browserpolicy mit „Nutzer verweigerte Berechtigung“ abgelehnt; keine Umgehung. Daher echte Datenantwort, Desktop-/Mobilanzeige und Ende-zu-Ende-Abnahme weiterhin **nicht ausführbar**. Kein Secretwert gelesen/ausgegeben; aus lokal fehlendem Schlüssel keine Aussage zum Produktionsschlüssel. V11 kann technisch unabhängig umgesetzt werden; V22 dokumentiert den verbleibenden Freigabeblocker. Keine Veröffentlichung ohne erforderliche reale Abnahme.

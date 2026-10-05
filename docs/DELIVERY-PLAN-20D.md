@@ -162,6 +162,8 @@ Paket A: [Diagnose und Korrektur](delivery/A-DATENLADEN.md). Reale Probe, techni
 
 ### V11 · Tabelle und mobile Ansicht
 
+**Technischer Stand 06.10.2026:** [V11-Protokoll](delivery/V11-ERGEBNISTABELLE.md): sieben sichtbare Kernspalten, gemeinsame Policy, Statusfilter, 2–3-Titel-Vergleich, mobile Karten/Details. 17 Offline-Suiten und Artefaktprüfung; echte 320/390/768-/Desktop-/Echtdatenabnahme bleibt wegen abgelehntem Loginzugang offen. Keine Prognosefreigabe und keine Veröffentlichung in diesem Paket.
+
 **Umsetzung:** Sieben Kernspalten, aufklappbarer Plan, mobile Karten, Filter nach Status, Vergleich von 2–3 Titeln. Ein gemeinsames API-Ergebnis, keine UI-Nebenrechnung.
 
 **Abnahme:** [ ] Fehlende Werte als „— + Grund“. [ ] Kein historischer Mittelwert in Netto-Spalte. [ ] 320/390/768 Pixel, Tastatur, Lade-/Fehler-/Leerzustand. [ ] Laienaufgaben aus Konzept dokumentiert. [ ] Benutzbarer Teilzustand bei einer fehlgeschlagenen Aktie, Gesamtranking entsprechend eingeschränkt.
@@ -282,7 +284,7 @@ Paket A: [Diagnose und Korrektur](delivery/A-DATENLADEN.md). Reale Probe, techni
 | V08 | teilweise vorhanden | blockiert | offen | Unternehmensquelle/Validator; Risikoregel separat | — |
 | V09 | teilweise vorhanden | blockiert | nicht erforderlich | Qualifizierte Roh-/Maßnahmendaten | — |
 | V10 | teilweise vorhanden | offen | offen | Persönliche Grenzen, Regelvergleich | — |
-| V11 | teilweise vorhanden | offen | nicht erforderlich | Ergebnistabelle und echte UX | — |
+| V11 | technisch umgesetzt | reale UI-/Echtdatenabnahme blockiert | nicht erforderlich | [Haupttabelle/mobile Karten](delivery/V11-ERGEBNISTABELLE.md); private Anmeldung blockiert | PR-/Abschlussmetadaten im Paketprotokoll |
 | V12 | teilweise vorhanden | blockiert | offen | Nettolabels und Szenarioabnahme | — |
 | V13 | teilweise vorhanden | blockiert | blockiert | Reale qualifizierte Testdaten | — |
 | V14 | offen | blockiert | blockiert | V13; jeder Teil separat | — |
