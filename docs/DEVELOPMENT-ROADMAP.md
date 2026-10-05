@@ -1,5 +1,7 @@
 # AktienAnalyse – Entwicklungsroadmap
 
+> Ergänzung vom 05.10.2026: Das [Produktkonzept](PRODUCT-CONCEPT-20D.md) konkretisiert das neue Zielbild. Der [Lieferplan V01–V24](DELIVERY-PLAN-20D.md) ordnet Fehlerkorrekturen, echte Datenabnahmen, UI, Kaufjournal und Erfolgsmessung in kleine Arbeitspakete ein und enthält die Zuordnung zu den bisherigen Paketen 01–18. Bei fachlichen Zielkonflikten gilt das neuere Konzept; bestehende Implementierungsnachweise bleiben erhalten. Keine automatische Umsetzung oder Freigabe durch diese Dokumentation.
+
 Stand: 04.10.2026 · Grundlage: unabhängiger Review von `xkutzner/AktienAnalyse`, Branch `main`, Commit `4094ce7ed01cc2ebb5cacb980a8bb0061e7de72e`.
 
 **Ziel:** Eine verständliche Entscheidungshilfe für Einzelaktien und Watchlists mit maximal 20 Handelstagen Haltedauer. Sie zeigt plausible Nettoszenarien, Risiken und einen nachvollziehbaren Ein-/Ausstiegsplan. Wenn Voraussetzungen fehlen, ist „Aktuell keine geeignete Aktie“ ein reguläres Ergebnis.

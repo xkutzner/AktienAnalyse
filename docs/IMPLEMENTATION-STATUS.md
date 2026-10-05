@@ -1,5 +1,7 @@
 # Implementierungsstand und Arbeitswarteschlange
 
+> Planungsupdate 05.10.2026: Neues [Produktkonzept](PRODUCT-CONCEPT-20D.md) und [Lieferplan mit getrenntem Implementierungs-/Daten-/Empiriestatus](DELIVERY-PLAN-20D.md). Der unten dokumentierte Implementierungsstand bleibt unverändert. Neue V-Pakete sind noch nicht umgesetzt; ihre Ausgangslage und Abnahmekriterien stehen im Lieferplan.
+
 Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). Paketdetails stehen in den jeweils verlinkten Dateien. Dieser Bericht behauptet keine Prognosegüte.
 
 ## In main umgesetzt
