@@ -113,7 +113,7 @@ Kein funktionaler Fehltest durchgeführt. Nicht ausführbare Liveprüfungen blei
 
 ## Abschluss
 
-- PR / überprüfter Head / Mergecommit: GitHub-PR und Commitmetadaten sind autoritative Abschlussnachweise; Merge erst nach Head-/Konflikt-/Review-/Checkprüfung mit `expected_head_sha`.
+- PR: [#17](https://github.com/xkutzner/AktienAnalyse/pull/17). Überprüfter Head und Mergecommit: autoritative PR-/Git-Metadaten; Abschlussmeldung nach finaler Prüfung mit `expected_head_sha`. Kein Mergeerfolg vor Prüfung behauptet.
 - Offene Restpunkte: V04 erneut mit Zugang/Unterlagen aufnehmen; V06 Instrumentvertrag, V05 produktiver Lauf/Restore, V08 Ereignisfelder/Quellen, V09 belegbasierte Qualifikation, V13/V16 Empirie.
 - Zulässige Aussage: Anbieterabnahme **blockiert**, Beschaffungsentscheidung **offen**. Keine Nettoprognose, Kaufempfehlung oder Ereignisfreiheitsfreigabe. „Aktuell keine geeignete Aktie“ bleibt reguläres Ergebnis; bei Datenlücken Beurteilung eingeschränkt.
 - Deployment: nicht erfolgt. Keine Datenkäufe oder Brokerorders.

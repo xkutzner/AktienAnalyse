@@ -271,7 +271,7 @@ Historische Point-in-time-Daten, vollständige Maßnahmen/Delistings, Konsensrev
 | V01 | erledigt | offen | nicht erforderlich | Reale Archiv-/Browserabnahme; BLS HTTP200/Parserprobe bestanden | [Paketprotokoll](delivery/V01-KALENDERZEITPUNKT.md), [PR #14](https://github.com/xkutzner/AktienAnalyse/pull/14) |
 | V02 | erledigt | offen | nicht erforderlich | Reale Ausführungs-/Maßnahmenabnahme V04/V09; keine Prognosefreigabe | [Paketprotokoll](delivery/V02-PREISANKER.md), [PR #15](https://github.com/xkutzner/AktienAnalyse/pull/15) |
 | V03 | erledigt | nicht erforderlich | nicht erforderlich | Keine Daten-/Prognosefreigabe; V04 echte Datenabnahme | [Paketprotokoll](delivery/V03-METHODIKREGISTRY.md), [PR #16](https://github.com/xkutzner/AktienAnalyse/pull/16) |
-| V04 | teilweise vorhanden | blockiert | nicht erforderlich | Kein ausführbarer autorisierter Provider-/Archivzugang; Entitlements/Lizenz/Angebot fehlen; Upgrade unentschieden | [Paketprotokoll](delivery/V04-DATENABNAHME.md), 05.10.2026 · Agent V04 |
+| V04 | teilweise vorhanden | blockiert | nicht erforderlich | Kein ausführbarer autorisierter Provider-/Archivzugang; Entitlements/Lizenz/Angebot fehlen; Upgrade unentschieden | [Paketprotokoll](delivery/V04-DATENABNAHME.md), [PR #17](https://github.com/xkutzner/AktienAnalyse/pull/17) · 05.10.2026 · Agent V04 |
 | V05 | teilweise vorhanden | offen | nicht erforderlich | Produktiver Lauf/Archiv/Restore | — |
 | V06 | teilweise vorhanden | offen | nicht erforderlich | Instrument-/Kalendernachweis | — |
 | V07 | teilweise vorhanden | offen | nicht erforderlich | Quellenadapter/Freshness | — |
