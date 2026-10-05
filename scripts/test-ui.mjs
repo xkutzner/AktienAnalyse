@@ -137,3 +137,37 @@ const partial=fixture(['AAPL','MSFT']);partial.dataQuality[1].quality.usable=fal
 nodes.symbols.value='AAPL,MSFT';await nodes.symbols.fire('input');work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),partial);await work;
 assert.match(nodes.stocks.innerHTML,/AAPL/);assert.ok(!nodes.stocks.innerHTML.includes('MSFT'));assert.match(nodes['banner-text'].textContent,/MSFT: Letzter Tageskurs fehlt/);
 console.log('Package A: slow/abort/retry, retained stale results, semantic HTTP200/schema errors and concrete partial-result reasons passed (synthetic DOM, no live acceptance).');
+// V11 shared table/cards: assertions exercise the inline controller with synthetic
+// API results. They are regression evidence, never visual or live acceptance.
+assert.ok(html.indexOf('id="dashboard-stocks"')<html.indexOf('id="analysis-card-title"'),'main table precedes advanced analysis card');
+assert.match(html,/max-width:780px[\s\S]*?\.dashboard-table thead\{display:none\}/);
+assert.match(nodes['dashboard-stocks'].innerHTML,/AAPL/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('MSFT'));
+assert.match(nodes['dashboard-stocks'].innerHTML,/Nicht beurteilbar/);
+assert.match(nodes['dashboard-stocks'].innerHTML,/Nicht verfügbar – Ausführungsdaten und historische Verfügbarkeit fehlen/);
+assert.match(nodes['dashboard-stocks'].innerHTML,/Historisch, ohne Kosten/);
+const cells=nodes['dashboard-stocks'].innerHTML.match(/<td>[\s\S]*?<\/td>/g);assert.equal(cells.length,7);assert.ok(!cells[2].includes('+2,0 %'),'historic return cannot enter net column');
+for(const text of ['Einstiegsspanne','Stop / Ziel','Enddatum','Kostenannahmen','Gründe dafür','Gründe dagegen / fehlende Daten','Verwendete Indikatoren'])assert.match(cells[6],new RegExp(text));
+nodes['dashboard-filter'].value='noSuitable';await nodes['dashboard-filter'].fire('change');assert.equal(nodes['dashboard-stocks'].innerHTML,'');assert.match(nodes['dashboard-empty'].textContent,/Filter/);
+nodes['dashboard-filter'].value='unknown';await nodes['dashboard-filter'].fire('change');assert.match(nodes['dashboard-stocks'].innerHTML,/AAPL/);
+nodes['dashboard-filter'].value='all';nodes.symbols.value='AAPL,MSFT,NVDA';await nodes.symbols.fire('input');work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),fixture(['AAPL','MSFT','NVDA']));await work;
+nodes['compare-one'].value='AAPL';nodes['compare-two'].value='AAPL';await nodes['compare-apply'].fire('click');assert.match(nodes['compare-status'].textContent,/unterschiedliche/);
+nodes['compare-two'].value='MSFT';await nodes['compare-apply'].fire('click');assert.match(nodes['dashboard-stocks'].innerHTML,/AAPL/);assert.match(nodes['dashboard-stocks'].innerHTML,/MSFT/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('NVDA'));
+await nodes['compare-reset'].fire('click');assert.match(nodes['dashboard-stocks'].innerHTML,/NVDA/);
+work=vm.runInContext('loadResearch()',context);assert.match(nodes['dashboard-stocks'].innerHTML,/Veraltet/);req=requests.shift();req.reject(Error('Netzwerkfehler'));await work;assert.match(nodes['dashboard-stocks'].innerHTML,/Veraltet/);assert.match(nodes['dashboard-stocks'].innerHTML,/NVDA/);
+// HTML escaping in user/provider sourced calendar titles; unknown coverage stays visible.
+vm.runInContext("calendarData={events:[{date:'2026-10-07',title:'<script>unsafe</script>',confirmationStatus:'vorläufig'}],risks:[]};renderDashboard()",context);
+assert.match(nodes['dashboard-stocks'].innerHTML,/&lt;script&gt;/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('<script>unsafe'));
+console.log('V11 regression: visible seven-column table, labels for mobile cards, common quality/status gate, net/historic separation, complete disclosures, filters, two-stock comparison, stale retention, calendar escaping. Real desktop/mobile and real API acceptance remain blocked.');
+
+// Qualified experimental input remains distinct from released forecasts; data
+// gaps must never become a no-suitable verdict. Reuse the common policy fixture.
+nodes['risk-max-loss'].value='100';nodes['risk-min-liquidity'].value='100000';
+vm.runInContext("cardFixture.evidence.costs='qualified';stocks=[cardFixture];researchState='ready';dashboardComparison=[];calendarData=null;renderDashboard()",context);
+assert.match(nodes['dashboard-stocks'].innerHTML,/Aktuell keine geeignete Aktie/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('Nicht beurteilbar'));
+assert.match(nodes['dashboard-stocks'].innerHTML,/Experimentelles Szenario/);assert.match(nodes['dashboard-stocks'].innerHTML,/Prognosefreigabe fehlt/);
+nodes['dashboard-filter'].value='noSuitable';await nodes['dashboard-filter'].fire('change');assert.match(nodes['dashboard-stocks'].innerHTML,/SYNTH/);
+nodes['risk-max-loss'].value='';vm.runInContext('renderDashboard()',context);assert.equal(nodes['dashboard-stocks'].innerHTML,'');
+nodes['dashboard-filter'].value='unknown';await nodes['dashboard-filter'].fire('change');assert.match(nodes['dashboard-stocks'].innerHTML,/Nicht beurteilbar/);
+
+vm.runInContext("calendarData={events:[{date:'2026-10-07',title:'CPI',confirmationStatus:'source-observation-unqualified'}],risks:[]};renderCalendarSummary()",context);
+assert.match(nodes['dashboard-stocks'].innerHTML,/Quelle beobachtet · noch nicht fachlich geprüft/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('source-observation-unqualified'));

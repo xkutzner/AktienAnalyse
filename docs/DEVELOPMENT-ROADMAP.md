@@ -1,5 +1,7 @@
 # AktienAnalyse – Entwicklungsroadmap
 
+> V11 vom 06.10.2026: [Haupttabelle/mobile Karten](delivery/V11-ERGEBNISTABELLE.md) technisch umgesetzt, Statusfilter/2–3-Titel-Vergleich/Detailgründe; echte UX-/Echtdatenabnahme wegen Loginblocker offen. Paket A: PR #18, Merge `2f1cc23b9c248614fd27d8975266aedd50d7da85`. Nächster Kontext passende V22; keine Veröffentlichung ohne erforderliche reale Abnahme, danach Stopp zur Erprobung.
+
 > Nutzerpriorität 06.10.2026: **A Datenladen → V11 Ergebnistabelle/mobile Oberfläche → passende V22-Betriebsabnahme → einmalige Veröffentlichung auf der bestehenden Site → STOPP zur Erprobung**. Keine automatische Fortsetzung zu V06 oder weiteren Paketen. [Paket A](delivery/A-DATENLADEN.md), [aktueller Lieferplan](DELIVERY-PLAN-20D.md). Die folgenden älteren Hinweise bleiben historische Nachweise; neue Priorität geht deren damaliger V06-Startreihenfolge vor.
 
 > V04 vom 05.10.2026: [Datenabnahme-/Beschaffungsprotokoll](delivery/V04-DATENABNAHME.md), [PR #17](https://github.com/xkutzner/AktienAnalyse/pull/17). I teilweise vorhanden, D blockiert, E nicht erforderlich. Lokaler autorisierter Provider-/Archivzugang fehlt; keine Kontoproben oder echte Providerantworten. Upgrade ohne eigenes Angebot/Entitlements nicht entscheidbar. Nächste unabhängige technische Arbeit V06 vor V05; keine neue Daten-/Prognosefreigabe.
