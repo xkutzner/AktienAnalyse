@@ -1,5 +1,7 @@
 # Vorläufige Bewertung und Kursszenarien · 06.10.2026
 
+> Betriebsreparatur nach PR #21: automatische zusätzliche Rohschlussabrufe entfallen, damit die Standardwatchlist nur sechs statt elf Anbieterabrufe benötigt. Die Tabelle nutzt den ausdrücklich bereinigten letzten Schluss mit Datum und ungeprüftem Rohkursstatus. Die folgenden Rohquote-Abrufbeschreibungen dokumentieren den ursprünglichen PR-Stand und sind für neue Analysen durch [SPY-CREDIT-FIX.md](SPY-CREDIT-FIX.md) ersetzt. Bereits gespeicherte Quoteinputs bleiben Replaybestandteil.
+
 Ausgang: `main` / `4eed08605a25361e2a66802a023e8fb9b32dba3d`. Genau dieses Nutzerpaket, keine neuen Indikatoren oder weitere V-Pakete. Technisch umgesetzt; reale Provider-/Browser-/Prognoseabnahme offen. Keine Veröffentlichung.
 
 ## Nutzerergebnis

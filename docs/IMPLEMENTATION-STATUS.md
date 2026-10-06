@@ -1,5 +1,10 @@
 # Implementierungsstand und Arbeitswarteschlange
 
+## SPY-Ladefehler · 06.10.2026
+
+Die Standardwatchlist lädt jetzt nur eine bereinigte Historie pro Aktie und SPY (sechs statt elf Anbieterabrufe). SPY wird zuerst geladen; automatische zusätzliche Rohschlussabrufe entfallen, letzter bereinigter Schluss bleibt mit Datum und ungeprüftem Rohkursstatus sichtbar. Tatsächliche SPY-Anbieter-/Qualitätsfehler und Datumsabweichungen werden konkret genannt; bei Kreditlimit gibt es einen Wiederholungshinweis. Strenge Kurs-/Ausführungsgates unverändert. [Fehlerpaket](delivery/SPY-CREDIT-FIX.md).
+
+
 ## Nutzerpriorität 06.10.2026: vorläufige Bewertung, Preis und vier Horizonte
 
 Neuer Einzelauftrag nach der Startreparatur: pro Aktie eine vorläufige Bewertung aus tatsächlich verfügbaren Merkmalen sowie letzter verfügbarer Schlusskurs und experimentelle Brutto-Kursszenarien für 1/5/10/20 folgende Handelssitzungen. Daten neuer Indikatoren zuerst einzeln prüfen; fehlende Zusatzdaten nicht in die Bewertung aufnehmen. Keine weitere Indikatorintegration und keine Site-Veröffentlichung in diesem Paket. [Paketprotokoll](delivery/PRICE-RESEARCH.md). Die folgenden älteren Auftragsprioritäten sind historische Nachweise.

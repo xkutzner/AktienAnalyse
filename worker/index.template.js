@@ -207,22 +207,21 @@ async function getResearch(url, env, replayDownloads=null) {
   if((url.searchParams.has('currency')&&url.searchParams.get('currency')!=='USD')||(url.searchParams.has('horizon')&&url.searchParams.get('horizon')!=='20')||(url.searchParams.has('side')&&url.searchParams.get('side')!=='long')||(url.searchParams.has('leverage')&&url.searchParams.get('leverage')!=='1'))return json({message:'Analysevertrag unterstützt nur Long ohne Hebel, USD und 20 Handelstage'},400);
   let context;
   try{context=analysisContext(url.searchParams.has('capital')?Number(url.searchParams.get('capital')):undefined,DEFAULT_COSTS)}catch(error){return json({message:error.message},400)}
-  const requested = [...symbols, "SPY"];
-  const downloads = replayDownloads || await Promise.all(requested.map(async symbol=>{
-    if(symbol==='SPY')return fetchHistory(symbol,env);
-    const [history,record]=await Promise.all([fetchHistory(symbol,env),providerData('time_series',{symbol,interval:'1day',outputsize:2,adjust:'none'},env)]);
-    const normalizedAt=new Date().toISOString(),quality=Array.isArray(record.payload?.values)?validatePrices(record.payload,'none',new Date(normalizedAt)):null;
-    const bar=quality?.bars?.at(-1);
-    const usable=quality?.usable===true&&bar?.date===quality.expectedLastSession;
-    return {...history,rawQuote:{value:usable?bar.close:null,sessionDate:usable?bar.date:null,currency:'USD',basis:'raw-close',live:false,rawVerified:usable,reason:usable?null:record.error||quality?.issues?.join(' · ')||'Rohschluss nicht verfügbar',snapshotId:record.snapshotId,archived:record.archived,provenance:record.provenance,normalizedAt}};
-  }));
+  // One history per title plus SPY; no automatic extra raw quote requests.
+  // Load the mandatory benchmark first so optional title requests cannot spend
+  // its credit. The table honestly uses the adjusted latest close as its basis.
+  const downloads=replayDownloads||[await fetchHistory('SPY',env),...await Promise.all(symbols.map(symbol=>fetchHistory(symbol,env)))];
   const finish=async (output,status=200)=>{const availablePrices=downloads.filter(item=>symbols.includes(item.symbol)).map(item=>{const raw=item.rawQuote,bar=item.bars?.at(-1);return {symbol:item.symbol,value:raw?.rawVerified?raw.value:bar?.close??null,sessionDate:raw?.rawVerified?raw.sessionDate:bar?.date??null,basis:raw?.rawVerified?'raw-close':'provider-adjusted-close',currency:'USD',rawVerified:raw?.rawVerified===true,qualityUsable:item.quality?.usable===true,reason:item.error?.message||item.quality?.issues?.join(' · ')||'Bewertungsdaten fehlen',retrievedAt:raw?.rawVerified?raw.provenance?.retrievedAt:item.provenance?.retrievedAt};});const result={...output,availablePrices,dataCapabilities:dataCapabilities(downloads)};return json(replayDownloads?result:await saveAnalysis(result,url,downloads,env,SOURCE_COMMIT),status,{"cache-control":"no-store"});};
   const bySymbol = Object.fromEntries(downloads.filter((item) => item.bars).map((item) => [item.symbol, item]));
   const errors = downloads.filter((item) => item.error).map((item) => item.error);
   const backtest = historicalBacktest(downloads, symbols);
   const benchmark = bySymbol.SPY;
   if (!benchmark || !benchmark.quality?.usable || benchmark.bars.length < 100) {
-    return finish({ ...context,analysisStatus:"unknown",error: "benchmark_unavailable", message: "SPY fehlt oder ist veraltet: keine belastbare Analyse.", errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived}}) }, 502);
+    const failed=downloads.find(item=>item.symbol==='SPY'),quality=failed?.quality;
+    const reason=failed?.error?.message||quality?.issues?.join(' · ')||(!benchmark?'Keine Kursreihe':benchmark.bars.length<100?'Weniger als 100 historische Tageskurse':'Kursprüfung nicht bestanden');
+    const dates=quality?.expectedLastSession?' Letzter vorhandener Schluss: '+(quality.lastSession||'unbekannt')+'; letzter abgeschlossener Handelstag: '+quality.expectedLastSession+'.':'';
+    const retry=reason.includes('Kreditlimit')?' Bitte frühestens in einer Minute erneut versuchen. Ein ausgeschöpftes Tageskontingent kann länger sperren.':'';
+    return finish({ ...context,analysisStatus:"unknown",error: "benchmark_unavailable", message: 'SPY: '+reason+'.'+dates+' Bewertung benötigt einen geprüften Marktvergleich.'+retry, errors, backtest, dataQuality:downloads.map(item=>{const {bars,sessionBars,...quality}=item.quality||{};return {symbol:item.symbol,quality,provenance:item.provenance,archived:item.archived,error:item.error||null}}) }, 502);
   }
 
   // Expected exchange sessions form the spine: missing SPY rows must not compress time.
