@@ -17,7 +17,11 @@ export async function saveAnalysis(result,url,downloads,env,sourceCommit,options
   }catch{return {id:item.snapshotId||null,hash:null}}
  }));
  const manifest={version:REPRO_VERSION,analysisId,createdAt,sourceCommit,sourceCommitStatus:sourceCommit?'build-provided':'unknown',model:result.model||{version:result.version||'reference-v1'},comparisonModel:result.comparisonModel||null,parameters:{horizon:20,target:.05,minAnalogs:12,scenario:result.scenario||null,costs:result.executionModel?.costs||result.costs||null,tradePlan:options.request?.tradePlan||result.tradePlan||null,thesisInvalidations:options.request?.thesisInvalidations||null},calendar:RESEARCH_GRID,universe:downloads.map(item=>item.symbol),snapshotHashes,protocol:EVALUATION_PROTOCOL,times:downloads.map(item=>({symbol:item.symbol,eventPeriod:item.provenance?.period||null,availableAt:item.provenance?.availableAt||null,publicationTime:item.provenance?.publicationTime||null,retrievedAt:item.provenance?.retrievedAt||null,normalizationAt:item.normalizationAt||null,historicalVintage:item.provenance?.historicalVintage||null})),resultHash:await digest(result),historicalVintageStatus:'unknown',archiveStatus:'unknown'};
- const input={kind:options.kind||'research',request:options.request||null,normalizationAt:options.normalizationAt||null,query:url.search,downloads:downloads.map(item=>({symbol:item.symbol,snapshotId:item.snapshotId,normalizationAt:item.normalizationAt}))};
+ const rawQuotes=downloads.filter(item=>item.rawQuote).map(item=>({symbol:item.symbol,...item.rawQuote}));
+ // Quotes and failed quote attempts are immutable analysis inputs. Their provenance
+ // and snapshot IDs survive replay, without new provider calls or a fresh timestamp.
+ if(rawQuotes.length)manifest.rawQuotes=rawQuotes;
+ const input={kind:options.kind||'research',request:options.request||null,normalizationAt:options.normalizationAt||null,query:url.search,downloads:downloads.map(item=>({symbol:item.symbol,snapshotId:item.snapshotId,normalizationAt:item.normalizationAt,...(item.rawQuote?{rawQuote:item.rawQuote}:{})}))};
  let archived=false;
  if(env.BUCKET&&downloads.every(item=>item.archived&&item.normalizationAt)&&snapshotHashes.every(item=>item.hash)){
   try{

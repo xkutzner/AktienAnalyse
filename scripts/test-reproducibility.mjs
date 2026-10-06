@@ -11,12 +11,16 @@ const env={TWELVEDATA_API_KEY:'secret-test',BUCKET:{async put(key,text,options){
 const dates=[];for(let d=new Date(RESEARCH_GRID.anchor+'T12:00:00Z');d.toISOString().slice(0,10)<=lastCompleted(new Date(),'XNAS').date;d.setUTCDate(d.getUTCDate()+1)){const day=d.toISOString().slice(0,10);if(session(day,'XNAS')?.open)dates.push(day)}
 const payload=symbol=>({meta:{currency:'USD',mic_code:'XNAS',exchange_timezone:'America/New_York'},values:dates.slice(-1300).map((datetime,i)=>{const close=100*Math.exp((symbol==='SPY'?.0001:.0005)*dates.indexOf(datetime));return {datetime,open:close,high:close*1.01,low:close*.99,close}})});
 const originalFetch=globalThis.fetch;let providerCalls=0;
-globalThis.fetch=async url=>{providerCalls++;return Response.json(payload(new URL(url).searchParams.get('symbol')))};
+globalThis.fetch=async url=>{providerCalls++;const u=new URL(url),data=payload(u.searchParams.get('symbol'));if(u.searchParams.get('adjust')==='none')data.values=data.values.slice(-2).map(row=>({...row,open:row.open*1.1,high:row.high*1.1,low:row.low*1.1,close:row.close*1.1}));return Response.json(data)};
 try{
  const query='https://test.local/api/stocks?symbols=AAPL&capital=12345';
  const result=await (await worker.fetch(new Request(query),env)).json();
  assert.equal(result.manifest.sourceCommit,sha);
- assert.equal(providerCalls,2,'08a must not add provider calls to standard research');
+ assert.equal(providerCalls,3,'one compact raw closing quote per stock, no extra benchmark quote');
+ assert.equal(result.stocks[0].provisionalResearch.price.basis,'raw-close');
+ assert.ok(result.manifest.rawQuotes[0].snapshotId);
+ assert.notEqual(result.stocks[0].provisionalResearch.price.value,result.stocks[0].provisionalResearch.scenarioAnchor.value,'raw quote and adjusted scenario basis stay separate');
+ assert.equal(result.availablePrices[0].basis,'raw-close');
  assert.equal(result.riskModel.version,'risk-prefix-v1');
  assert.equal(result.riskModel.rankingChanged,false);
  assert.equal(result.stocks[0].risk.averageDailyTradedValue.value,null);
@@ -39,6 +43,7 @@ try{
   assert.equal(replay.status,200);const restored=await replay.json();assert.equal(restored.status,'identical');
   const {manifest,reproducibility,...baseline}=result;assert.deepEqual(restored.result,baseline);
   assert.equal(await digest(restored.result),manifest.resultHash);
+  const changedQuote=JSON.parse(originalStored);changedQuote.input.downloads[0].rawQuote.value=1;storage.set('analyses/'+id+'.json',JSON.stringify(changedQuote));assert.equal((await worker.fetch(new Request('https://test.local/api/replay?id='+id),env)).status,409,'quote input protected by immutable record hash');storage.set('analyses/'+id+'.json',originalStored);
   const snapshotKey='snapshots/'+manifest.snapshotHashes[0].id+'.json',before=storage.get(snapshotKey);
   const broken=JSON.parse(before);broken.payload.values[20].close=1;storage.set(snapshotKey,JSON.stringify(broken));
   assert.equal((await worker.fetch(new Request('https://test.local/api/replay?id='+id),env)).status,409);
@@ -61,16 +66,17 @@ try{
   const simulationReplay=await worker.fetch(new Request('https://test.local/api/replay?id='+simulated.manifest.analysisId),env);
   assert.equal(simulationReplay.status,200);assert.equal((await simulationReplay.json()).status,'identical');
  }
- assert.equal(providerCalls,2);
+ assert.equal(providerCalls,3);
  assert.equal(storage.get('analyses/'+id+'.json'),originalStored,'replay never overwrites decision');
  globalThis.fetch=async url=>Response.json(payload(new URL(url).searchParams.get('symbol')));
  const second=await (await worker.fetch(new Request(query),env)).json();assert.notEqual(second.manifest.analysisId,id);
  assert.equal(storage.get('analyses/'+id+'.json'),originalStored);
  collision=true;const rejectedSave=await (await worker.fetch(new Request(query),env)).json();assert.equal(rejectedSave.manifest.archiveStatus,'unknown');collision=false;
  if(sha){
-  for(const defect of ['duplicate','provider-error','invalid-values','SPY-blocked']){
+  for(const defect of ['duplicate','provider-error','invalid-values','SPY-blocked','raw-quote-error']){
    globalThis.fetch=async url=>{
-    const symbol=new URL(url).searchParams.get('symbol');
+    const u=new URL(url),symbol=u.searchParams.get('symbol');
+    if(defect==='raw-quote-error'&&u.searchParams.get('adjust')==='none')return Response.json({status:'error',code:429,message:'limit'}, {status:429});
     if(defect==='provider-error'&&symbol==='AAPL')return Response.json({status:'error',code:429,message:'limit'}, {status:429});
     const data=payload(symbol);
     if(defect==='duplicate'&&symbol==='AAPL')data.values.push({...data.values[20]});
@@ -79,6 +85,7 @@ try{
     return Response.json(data);
    };
    const blocked=await (await worker.fetch(new Request(query),env)).json();
+   if(defect==='raw-quote-error'){assert.equal(blocked.stocks[0].provisionalResearch.price.basis,'provider-adjusted-close');assert.equal(blocked.stocks[0].provisionalResearch.rating.status,'provisional');assert.equal(blocked.stocks[0].provisionalResearch.rawQuoteStatus.status,'unknown');assert.equal(blocked.availablePrices[0].basis,'provider-adjusted-close');}
    globalThis.fetch=async()=>{throw Error('no provider access in error replay')};
    const replayed=await worker.fetch(new Request('https://test.local/api/replay?id='+blocked.manifest.analysisId),env);
    assert.equal(replayed.status,200,defect);assert.equal((await replayed.json()).status,'identical',defect);
