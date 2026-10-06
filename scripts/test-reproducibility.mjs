@@ -16,11 +16,11 @@ try{
  const query='https://test.local/api/stocks?symbols=AAPL&capital=12345';
  const result=await (await worker.fetch(new Request(query),env)).json();
  assert.equal(result.manifest.sourceCommit,sha);
- assert.equal(providerCalls,3,'one compact raw closing quote per stock, no extra benchmark quote');
- assert.equal(result.stocks[0].provisionalResearch.price.basis,'raw-close');
- assert.ok(result.manifest.rawQuotes[0].snapshotId);
- assert.notEqual(result.stocks[0].provisionalResearch.price.value,result.stocks[0].provisionalResearch.scenarioAnchor.value,'raw quote and adjusted scenario basis stay separate');
- assert.equal(result.availablePrices[0].basis,'raw-close');
+ assert.equal(providerCalls,2,'one history per title plus benchmark, no automatic raw quote credits');
+ assert.equal(result.stocks[0].provisionalResearch.price.basis,'provider-adjusted-close');
+ assert.equal(result.stocks[0].provisionalResearch.price.rawVerified,false);
+ assert.equal(result.stocks[0].provisionalResearch.rawQuoteStatus.status,'unknown');
+ assert.equal(result.availablePrices[0].basis,'provider-adjusted-close');
  assert.equal(result.riskModel.version,'risk-prefix-v1');
  assert.equal(result.riskModel.rankingChanged,false);
  assert.equal(result.stocks[0].risk.averageDailyTradedValue.value,null);
@@ -43,7 +43,7 @@ try{
   assert.equal(replay.status,200);const restored=await replay.json();assert.equal(restored.status,'identical');
   const {manifest,reproducibility,...baseline}=result;assert.deepEqual(restored.result,baseline);
   assert.equal(await digest(restored.result),manifest.resultHash);
-  const changedQuote=JSON.parse(originalStored);changedQuote.input.downloads[0].rawQuote.value=1;storage.set('analyses/'+id+'.json',JSON.stringify(changedQuote));assert.equal((await worker.fetch(new Request('https://test.local/api/replay?id='+id),env)).status,409,'quote input protected by immutable record hash');storage.set('analyses/'+id+'.json',originalStored);
+  const changedQuote=JSON.parse(originalStored);changedQuote.input.downloads[0].rawQuote={value:1};storage.set('analyses/'+id+'.json',JSON.stringify(changedQuote));assert.equal((await worker.fetch(new Request('https://test.local/api/replay?id='+id),env)).status,409,'added quote input protected by immutable record hash');storage.set('analyses/'+id+'.json',originalStored);
   const snapshotKey='snapshots/'+manifest.snapshotHashes[0].id+'.json',before=storage.get(snapshotKey);
   const broken=JSON.parse(before);broken.payload.values[20].close=1;storage.set(snapshotKey,JSON.stringify(broken));
   assert.equal((await worker.fetch(new Request('https://test.local/api/replay?id='+id),env)).status,409);
@@ -66,17 +66,34 @@ try{
   const simulationReplay=await worker.fetch(new Request('https://test.local/api/replay?id='+simulated.manifest.analysisId),env);
   assert.equal(simulationReplay.status,200);assert.equal((await simulationReplay.json()).status,'identical');
  }
- assert.equal(providerCalls,3);
+ assert.equal(providerCalls,2);
  assert.equal(storage.get('analyses/'+id+'.json'),originalStored,'replay never overwrites decision');
+ // Default watchlist must fit an eight-credit window. The old eleven calls
+ // spent credits on raw quotes and could starve mandatory SPY/stock histories.
+ let creditCalls=0;const creditSymbols=[];
+ globalThis.fetch=async url=>{
+  const u=new URL(url);creditCalls++;creditSymbols.push(u.searchParams.get('symbol'));
+  assert.equal(u.searchParams.get('adjust'),'all');
+  return creditCalls>8?Response.json({status:'error',code:429,message:'limit'}):Response.json(payload(u.searchParams.get('symbol')));
+ };
+ const defaultResponse=await worker.fetch(new Request('https://test.local/api/stocks?symbols=AAPL,MSFT,NVDA,AMZN,GOOGL'),env),defaultResult=await defaultResponse.json();
+ assert.equal(defaultResponse.status,200);assert.equal(creditCalls,6);assert.equal(creditSymbols[0],'SPY');assert.equal(defaultResult.stocks.length,5);
+ assert.ok(defaultResult.stocks.every(stock=>stock.provisionalResearch.rating.status==='provisional'&&stock.provisionalResearch.price.rawVerified===false));
+ assert.ok(defaultResult.stocks.every(stock=>stock.provisionalResearch.horizons.length===4));
+ globalThis.fetch=async url=>new URL(url).searchParams.get('symbol')==='SPY'?Response.json({status:'error',code:429,message:'limit'}):Response.json(payload('AAPL'));
+ const limitedResponse=await worker.fetch(new Request(query),env),limited=await limitedResponse.json();
+ assert.equal(limitedResponse.status,502);assert.match(limited.message,/SPY: Kreditlimit erreicht/);assert.ok(limited.dataQuality.find(row=>row.symbol==='SPY').error);
+ globalThis.fetch=async url=>{const u=new URL(url),data=payload(u.searchParams.get('symbol'));if(u.searchParams.get('symbol')==='SPY')data.values.pop();return Response.json(data)};
+ const staleResponse=await worker.fetch(new Request(query),env),stale=await staleResponse.json();
+ assert.equal(staleResponse.status,502);assert.match(stale.message,/Letzter vorhandener Schluss:.*letzter abgeschlossener Handelstag:/);assert.equal(stale.dataQuality.find(row=>row.symbol==='SPY').quality.usable,false);
  globalThis.fetch=async url=>Response.json(payload(new URL(url).searchParams.get('symbol')));
  const second=await (await worker.fetch(new Request(query),env)).json();assert.notEqual(second.manifest.analysisId,id);
  assert.equal(storage.get('analyses/'+id+'.json'),originalStored);
  collision=true;const rejectedSave=await (await worker.fetch(new Request(query),env)).json();assert.equal(rejectedSave.manifest.archiveStatus,'unknown');collision=false;
  if(sha){
-  for(const defect of ['duplicate','provider-error','invalid-values','SPY-blocked','raw-quote-error']){
+  for(const defect of ['duplicate','provider-error','invalid-values','SPY-blocked']){
    globalThis.fetch=async url=>{
     const u=new URL(url),symbol=u.searchParams.get('symbol');
-    if(defect==='raw-quote-error'&&u.searchParams.get('adjust')==='none')return Response.json({status:'error',code:429,message:'limit'}, {status:429});
     if(defect==='provider-error'&&symbol==='AAPL')return Response.json({status:'error',code:429,message:'limit'}, {status:429});
     const data=payload(symbol);
     if(defect==='duplicate'&&symbol==='AAPL')data.values.push({...data.values[20]});
@@ -85,7 +102,6 @@ try{
     return Response.json(data);
    };
    const blocked=await (await worker.fetch(new Request(query),env)).json();
-   if(defect==='raw-quote-error'){assert.equal(blocked.stocks[0].provisionalResearch.price.basis,'provider-adjusted-close');assert.equal(blocked.stocks[0].provisionalResearch.rating.status,'provisional');assert.equal(blocked.stocks[0].provisionalResearch.rawQuoteStatus.status,'unknown');assert.equal(blocked.availablePrices[0].basis,'provider-adjusted-close');}
    globalThis.fetch=async()=>{throw Error('no provider access in error replay')};
    const replayed=await worker.fetch(new Request('https://test.local/api/replay?id='+blocked.manifest.analysisId),env);
    assert.equal(replayed.status,200,defect);assert.equal((await replayed.json()).status,'identical',defect);
