@@ -1,5 +1,10 @@
 # Implementierungsstand und Arbeitswarteschlange
 
+## Priorität 06.10.2026: Startreparatur und Einzelabnahme
+
+Der Nutzer meldet eine eingefrorene Site und verlangt künftig einzelne Featuretests vor Kombination. Zuerst technischen Start reparieren; keine weiteren V-Pakete in diesem Auftrag. Details und nächste Einzelabnahmen: [STARTUP-UND-EINZELABNAHME.md](delivery/STARTUP-UND-EINZELABNAHME.md). Bereits implementierte Pakete bleiben vorhanden; ihr technischer Stand ist keine echte Produkt-/Prognoseabnahme.
+
+
 > Planungsupdate 05.10.2026: Neues [Produktkonzept](PRODUCT-CONCEPT-20D.md) und [Lieferplan mit getrenntem Implementierungs-/Daten-/Empiriestatus](DELIVERY-PLAN-20D.md). Der unten dokumentierte Implementierungsstand bleibt unverändert. V01 bis V03 sind technisch umgesetzt; reale Betriebs-/Ausführungsabnahmen bleiben offen. V04 reale Datenabnahme bleibt blockiert; Beschaffungsliste erstellt und Upgradeentscheidung ohne Kontoangebot unentschieden. Weitere V-Pakete gemäß Lieferplan.
 
 Stand: 04.10.2026. Autoritative Planung: [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). Paketdetails stehen in den jeweils verlinkten Dateien. Dieser Bericht behauptet keine Prognosegüte.

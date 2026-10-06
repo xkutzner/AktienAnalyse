@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const {renderPage}=await import('./render-page.mjs');
-const html=renderPage(fs.readFileSync('app/index.html','utf8'));
+const html=process.env.UI_ARTIFACT==='1'
+ ? await (await (await import('../dist/server/index.js')).default.fetch(new Request('https://artifact.local/'),{})).text()
+ : renderPage(fs.readFileSync('app/index.html','utf8'));
+assert.ok(!/__+[A-Z][A-Z0-9_]*__/.test(html),'no unresolved template placeholders in tested page');
 const attrs=text=>Object.fromEntries([...text.matchAll(/([\w-]+)="([^"]*)"/g)].map(m=>[m[1],m[2]]));
 let active;
 class Node {
