@@ -1,5 +1,10 @@
 # Lieferplan und Abnahmebuch: Aktienanalyse für 20 Handelstage
 
+## Priorität 06.10.2026: Startreparatur und Einzelabnahme
+
+Der Nutzer meldet eine eingefrorene Site und verlangt künftig einzelne Featuretests vor Kombination. Zuerst technischen Start reparieren; keine weiteren V-Pakete in diesem Auftrag. Details und nächste Einzelabnahmen: [STARTUP-UND-EINZELABNAHME.md](delivery/STARTUP-UND-EINZELABNAHME.md). Bereits implementierte Pakete bleiben vorhanden; ihr technischer Stand ist keine echte Produkt-/Prognoseabnahme.
+
+
 Version 1.0 · 05.10.2026 · Ausgangscommit `ee283932a888f54e957f43a53c107dee27574b1e`.
 
 Fachliche Grundlage: [PRODUCT-CONCEPT-20D.md](PRODUCT-CONCEPT-20D.md). Bestehende Umsetzung: [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Dieser Plan dokumentiert neue Arbeit; vorhandene Module sind keine automatisch abgeschlossenen neuen Pakete.

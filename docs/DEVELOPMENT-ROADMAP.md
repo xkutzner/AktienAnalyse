@@ -1,5 +1,10 @@
 # AktienAnalyse – Entwicklungsroadmap
 
+## Priorität 06.10.2026: Startreparatur und Einzelabnahme
+
+Der Nutzer meldet eine eingefrorene Site und verlangt künftig einzelne Featuretests vor Kombination. Zuerst technischen Start reparieren; keine weiteren V-Pakete in diesem Auftrag. Details und nächste Einzelabnahmen: [STARTUP-UND-EINZELABNAHME.md](delivery/STARTUP-UND-EINZELABNAHME.md). Bereits implementierte Pakete bleiben vorhanden; ihr technischer Stand ist keine echte Produkt-/Prognoseabnahme.
+
+
 > V11 vom 06.10.2026: [Haupttabelle/mobile Karten](delivery/V11-ERGEBNISTABELLE.md) technisch umgesetzt, Statusfilter/2–3-Titel-Vergleich/Detailgründe; echte UX-/Echtdatenabnahme wegen Loginblocker offen. Paket A: PR #18, Merge `2f1cc23b9c248614fd27d8975266aedd50d7da85`. Nächster Kontext passende V22; keine Veröffentlichung ohne erforderliche reale Abnahme, danach Stopp zur Erprobung.
 
 > Nutzerpriorität 06.10.2026: **A Datenladen → V11 Ergebnistabelle/mobile Oberfläche → passende V22-Betriebsabnahme → einmalige Veröffentlichung auf der bestehenden Site → STOPP zur Erprobung**. Keine automatische Fortsetzung zu V06 oder weiteren Paketen. [Paket A](delivery/A-DATENLADEN.md), [aktueller Lieferplan](DELIVERY-PLAN-20D.md). Die folgenden älteren Hinweise bleiben historische Nachweise; neue Priorität geht deren damaliger V06-Startreihenfolge vor.
