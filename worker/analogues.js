@@ -1,4 +1,31 @@
 export const ANALOGUE_VERSION='features-v2';
+export const PRICE_RESEARCH_VERSION='price-research-v1';
+export const PRICE_HORIZONS=Object.freeze([1,5,10,20]);
+// Fixed holding outcomes from signal close, never the capped strategy proxy.
+// Keep the existing 20-session training raster and maturity for all horizons.
+export function priceResearch(features,records,currentIndex,bars,{marketUp=null,asOf=null,retrievedAt=null}={}){
+ const valid=bar=>bar&&Number.isFinite(bar.close)&&bar.close>0;
+ const audit=ANALOGUE_PARAMETERS.features.map(key=>({key,status:Number.isFinite(features?.[key])?'available':'missing',included:Number.isFinite(features?.[key]),basis:'provider-adjusted-close'}));
+ const anchor=valid(bars[currentIndex])?bars[currentIndex].close:null;
+ const price={value:anchor,currency:'USD',basis:'provider-adjusted-close',sessionDate:asOf,retrievedAt,live:false,rawVerified:false};
+ const horizons=PRICE_HORIZONS.map(horizon=>{
+  const observations=records.map(row=>{
+   const path=bars.slice(row.index,row.index+horizon+1);
+   const complete=path.length===horizon+1&&path.every(valid);
+   const outcome=complete?bars[row.index+horizon].close/bars[row.index].close-1:null;
+   return {...row,proxyReturn:Number.isFinite(outcome)?outcome:null};
+  });
+  const estimate=estimateFeatures(features,observations,currentIndex,{basis:'proxy',marketUp});
+  const m=estimate.metrics;
+  const values=m&&anchor!==null?[m.expectedReturn,m.outcomeRange80.low,m.outcomeRange80.high].map(r=>anchor*(1+r)):null;
+  const usable=values?.every(v=>Number.isFinite(v)&&v>0);
+  return {horizon,status:usable?'exploratory':'unknown',meanPrice:usable?values[0]:null,lowPrice:usable?values[1]:null,highPrice:usable?values[2]:null,meanReturn:usable?m.expectedReturn:null,caseCount:estimate.caseCount,effectiveCaseCount:estimate.effectiveCaseCount,reason:usable?null:estimate.reason||'Preisanker oder endliche positive Szenariopreise fehlen'};
+ });
+ const complete=audit.every(item=>item.status==='available')&&anchor!==null;
+ const score=complete&&Number.isFinite(features?.score)&&features.score>=0&&features.score<=100?features.score:null;
+ const rating={status:score===null?'unknown':'provisional',score,label:score===null?'Datenbasis unzureichend':score>50?'Kursmerkmale überwiegend positiv':score<50?'Kursmerkmale überwiegend schwach':'Kursmerkmale ausgeglichen',basis:'reference-v1-feature-score',investmentQualified:false};
+ return {version:PRICE_RESEARCH_VERSION,price,rating,horizons,indicatorAudit:audit,excluded:['Handelswert: Rohpreis-/Volumenbasis ungeprüft','Earnings und Kapitalmaßnahmen: Abdeckung unbekannt','Makro-/Sektordaten: nicht integriert'],basis:'adjusted-fixed-close-return-gross-proxy',dayConvention:'Signal-Schluss t; Preis an Schluss t+h; 1, 5, 10, 20 folgende reguläre Handelssitzungen',empiricalVerified:false,net:false,warning:'Experimentelle Brutto-Kursszenarien aus historischen Analogien, keine kalibrierte Prognose. Anbieterbereinigt, einschließlich möglicher Dividendenanpassung; keine handelbare Rohkursprognose. 10.–90. historische Ergebnisperzentile, keine garantierte Zukunftsspanne.'};
+}
 export const ANALOGUE_PARAMETERS=Object.freeze({features:['r20','r60','rel20','trend50','vol20'],minCases:12,minEffectiveCases:8,minTemporalBlocks:4,maxCases:30,shrinkage:.1,thresholdNeighbour:12,thresholdQuantile:.75,blockLength:4,bootstrapReplicates:500});
 function avg(values){return values.reduce((a,b)=>a+b,0)/values.length}
 function percentile(values,p){const sorted=[...values].sort((a,b)=>a-b);return sorted[Math.floor((sorted.length-1)*p)]}
@@ -71,4 +98,3 @@ export function estimateFeatures(features,records,currentIndex,{basis='net',mark
  if(!ci)return {...diagnostics,status:'insufficient',reason:'Unsicherheitsintervall wegen dünner zeitlicher Abdeckung nicht belastbar'};
  return {...diagnostics,status:'exploratory',expectedNetReturn:basis==='net'?mean:null,metrics:{expectedReturn:mean,median:weightedQuantile(selected,.5),lossProbability:lossWeight/weight,averageLossWhenNegative:lossWeight?losses.reduce((s,row)=>s+row.weight*row.outcome,0)/lossWeight:null,worst10PercentMean:tailMean(selected,.1),outcomeRange80:{low:weightedQuantile(selected,.1),high:weightedQuantile(selected,.9)},meanUncertainty95:ci},uncertaintyNote:'Conditional block bootstrap: excludes uncertainty of scaling/threshold fitting and regime choice; nominal 95%, no guaranteed coverage',observationsOverlap:records.some((row,i)=>i&&row.index-records[i-1].index<20)};
 }
-

@@ -1,5 +1,7 @@
 # Produktkonzept: verständliche Aktienauswahl für 20 Handelstage
 
+Ergänzung 06.10.2026: Schon Stufe A zeigt eine **vorläufige Merkmalsbewertung** aus verfügbaren Daten, separat von der weiterhin gesperrten Anlagefreigabe. Letzter geprüfter Rohschluss je Aktie (USD, Datum, kein Livekurs), bei Abruffehler ausdrücklich bereinigter Ersatzschluss. Vier experimentelle Kursszenarien für Schluss t+1/t+5/t+10/t+20 beziehen sich auf folgenden regulären Handelssitzungen ab dem Signal-Schluss. Ihr historischer Mittelwert und 10.–90.-Perzentil stammen aus festen bereinigten Kursrenditen, ohne frühes Strategieziel und ohne Kosten. Der bereinigte Szenarioanker bleibt separat vom Rohschluss sichtbar. Keine kalibrierte Wahrscheinlichkeit oder handelbare Rohkursprognose. Fehlende Daten ergeben unbekannte Teilwerte, verfügbare Merkmale bleiben bewertbar. Neue Indikatoren benötigen vor Aufnahme eine dokumentierte Datenprüfung. Siehe [Paketprotokoll](delivery/PRICE-RESEARCH.md).
+
 Version 1.0 · 05.10.2026 · Planungsgrundlage: `main` / `ee283932a888f54e957f43a53c107dee27574b1e`.
 
 **Ziel:** In einer verständlichen Übersicht erkennen, welche Aktien unseres definierten Universums innerhalb der nächsten maximal 20 Handelstage das attraktivste Verhältnis aus plausibler Nettorendite, Verlustrisiko und Verlässlichkeit der Einschätzung bieten. Wenn keine Aktie die Bedingungen erfüllt, ist „Aktuell keine geeignete Aktie“ das richtige Ergebnis.

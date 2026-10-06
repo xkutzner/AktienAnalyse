@@ -33,8 +33,9 @@ assert.equal(vm.runInContext('pct(.02)',context),'+2,0 %');assert.equal(vm.runIn
 const tick=()=>new Promise(r=>setImmediate(r));
 const respond=async(request,body,status=200)=>{request.resolve(Response.json(body,{status}));await tick();await tick()};
 const stock=symbol=>({symbol,asOf:'2026-10-02',qualityUsable:true,close:100,r20:.03,r60:.05,rel20:.02,trend50:.01,vol20:.25,marketR20:.01,score:60,expectedReturn:.02,sampleCount:20,probabilityTarget:.6,probabilityLow:.4,probabilityHigh:.8,p10:-.1,p90:.05,averageAdverseMove:-.08,newAnalogs:{proxy:{reason:'Keine belastbare Schätzung',caseCount:0},net:{reason:'historische Datenstände fehlen',expectedNetReturn:null}}});
+const makeResearch=close=>({rating:{status:'provisional',score:60,label:'Kursmerkmale überwiegend positiv'},price:{value:close,sessionDate:'2026-10-02'},horizons:[1,5,10,20].map(horizon=>({horizon,status:'exploratory',meanPrice:close*(1+horizon/100),meanReturn:horizon/100,lowPrice:close*.95,highPrice:close*1.3,caseCount:20})),indicatorAudit:[{key:'r20',included:true}],excluded:['Earnings: Abdeckung unbekannt']});
 const quality=symbol=>({symbol,quality:{usable:true,lastSession:'2026-10-02',expectedLastSession:'2026-10-02',issues:[]},provenance:{},archived:false});
-const fixture=(symbols=['AAPL','MSFT'])=>({stocks:symbols.map(stock),best:stock(symbols[0]),asOf:'2026-10-02',benchmark:{r20:.01},dataQuality:[...symbols,'SPY'].map(quality),backtest:{tradeCount:15,windows:20,sufficientSample:true,hitRate:.6,averageTradeReturn:.02,averageBenchmarkReturn:.01,excessPerWindow:.01,maxDrawdown:-.1,recent:[]},errors:[]});
+const fixture=(symbols=['AAPL','MSFT'])=>({stocks:symbols.map(symbol=>({...stock(symbol),provisionalResearch:makeResearch(100)})),best:stock(symbols[0]),asOf:'2026-10-02',benchmark:{r20:.01},dataQuality:[...symbols,'SPY'].map(quality),backtest:{tradeCount:15,windows:20,sufficientSample:true,hitRate:.6,averageTradeReturn:.02,averageBenchmarkReturn:.01,excessPerWindow:.01,maxDrawdown:-.1,recent:[]},errors:[]});
 assert.equal(nodes['load-button'].disabled,true);assert.match(nodes.empty.textContent,/läuft/);
 await respond(requests.shift(),fixture());assert.match(nodes['candidate-cards'].innerHTML,/AAPL/);assert.match(nodes['best-title'].textContent,/Watchlist/);assert.match(nodes['bt-note'].textContent,/nicht belegt/);
 // Same quality gate in cards, table, best and details: inconsistent server payload is refused.
@@ -145,11 +146,11 @@ console.log('Package A: slow/abort/retry, retained stale results, semantic HTTP2
 assert.ok(html.indexOf('id="dashboard-stocks"')<html.indexOf('id="analysis-card-title"'),'main table precedes advanced analysis card');
 assert.match(html,/max-width:780px[\s\S]*?\.dashboard-table thead\{display:none\}/);
 assert.match(nodes['dashboard-stocks'].innerHTML,/AAPL/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('MSFT'));
-assert.match(nodes['dashboard-stocks'].innerHTML,/Nicht beurteilbar/);
+assert.match(nodes['dashboard-stocks'].innerHTML,/Nicht beurteilbar/);assert.match(nodes['dashboard-stocks'].innerHTML,/Vorläufiger Merkmalscore 60,0/);assert.match(nodes['dashboard-stocks'].innerHTML,/Letzter bereinigter Schluss/);assert.match(nodes['dashboard-stocks'].innerHTML,/20 Handelstage:/);
 assert.match(nodes['dashboard-stocks'].innerHTML,/Nicht verfügbar – Ausführungsdaten und historische Verfügbarkeit fehlen/);
 assert.match(nodes['dashboard-stocks'].innerHTML,/Historisch, ohne Kosten/);
-const cells=nodes['dashboard-stocks'].innerHTML.match(/<td>[\s\S]*?<\/td>/g);assert.equal(cells.length,7);assert.ok(!cells[2].includes('+2,0 %'),'historic return cannot enter net column');
-for(const text of ['Einstiegsspanne','Stop / Ziel','Enddatum','Kostenannahmen','Gründe dafür','Gründe dagegen / fehlende Daten','Verwendete Indikatoren'])assert.match(cells[6],new RegExp(text));
+const cells=nodes['dashboard-stocks'].innerHTML.match(/<td>[\s\S]*?<\/td>/g);assert.equal(cells.length,8);assert.ok(!cells[3].includes('+2,0 %'),'historic return cannot enter net column');
+for(const text of ['Einstiegsspanne','Stop / Ziel','Enddatum','Kostenannahmen','Gründe dafür','Gründe dagegen / fehlende Daten','Verwendete Indikatoren'])assert.match(cells[7],new RegExp(text));
 nodes['dashboard-filter'].value='noSuitable';await nodes['dashboard-filter'].fire('change');assert.equal(nodes['dashboard-stocks'].innerHTML,'');assert.match(nodes['dashboard-empty'].textContent,/Filter/);
 nodes['dashboard-filter'].value='unknown';await nodes['dashboard-filter'].fire('change');assert.match(nodes['dashboard-stocks'].innerHTML,/AAPL/);
 nodes['dashboard-filter'].value='all';nodes.symbols.value='AAPL,MSFT,NVDA';await nodes.symbols.fire('input');work=vm.runInContext('loadResearch()',context);await respond(requests.shift(),fixture(['AAPL','MSFT','NVDA']));await work;
@@ -160,7 +161,7 @@ work=vm.runInContext('loadResearch()',context);assert.match(nodes['dashboard-sto
 // HTML escaping in user/provider sourced calendar titles; unknown coverage stays visible.
 vm.runInContext("calendarData={events:[{date:'2026-10-07',title:'<script>unsafe</script>',confirmationStatus:'vorläufig'}],risks:[]};renderDashboard()",context);
 assert.match(nodes['dashboard-stocks'].innerHTML,/&lt;script&gt;/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('<script>unsafe'));
-console.log('V11 regression: visible seven-column table, labels for mobile cards, common quality/status gate, net/historic separation, complete disclosures, filters, two-stock comparison, stale retention, calendar escaping. Real desktop/mobile and real API acceptance remain blocked.');
+console.log('V11 regression: visible eight-column table, labels for mobile cards, common quality/status gate, net/historic separation, complete disclosures, filters, two-stock comparison, stale retention, calendar escaping. Real desktop/mobile and real API acceptance remain blocked.');
 
 // Qualified experimental input remains distinct from released forecasts; data
 // gaps must never become a no-suitable verdict. Reuse the common policy fixture.
@@ -174,3 +175,13 @@ nodes['dashboard-filter'].value='unknown';await nodes['dashboard-filter'].fire('
 
 vm.runInContext("calendarData={events:[{date:'2026-10-07',title:'CPI',confirmationStatus:'source-observation-unqualified'}],risks:[]};renderCalendarSummary()",context);
 assert.match(nodes['dashboard-stocks'].innerHTML,/Quelle beobachtet · noch nicht fachlich geprüft/);assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('source-observation-unqualified'));
+
+// Quote-only responses must remain useful when the benchmark / indicator history fails.
+nodes['dashboard-filter'].value='all';nodes.symbols.value='QUOTE';await nodes.symbols.fire('input');
+const quoteWork=vm.runInContext('loadResearch()',context);
+await respond(requests.shift(),{message:'SPY fehlt',availablePrices:[{symbol:'QUOTE',value:123.45,sessionDate:'2026-10-02',basis:'raw-close',rawVerified:true,qualityUsable:true,reason:'Benchmark fehlt'}],dataQuality:[]},502);await quoteWork;
+assert.match(nodes['dashboard-stocks'].innerHTML,/123,45/);assert.match(nodes['dashboard-stocks'].innerHTML,/Letzter Rohschluss/);assert.match(nodes['dashboard-stocks'].innerHTML,/mobile-label/);assert.match(nodes['dashboard-stocks'].innerHTML,/Veraltet/);
+const quoteRetry=vm.runInContext('loadResearch()',context);requests.shift().reject(Error('Netzwerkfehler'));await quoteRetry;
+assert.match(nodes['dashboard-stocks'].innerHTML,/123,45/);assert.match(nodes['dashboard-stocks'].innerHTML,/Veraltet/);
+nodes.symbols.value='OTHER';await nodes.symbols.fire('input');assert.ok(!nodes['dashboard-stocks'].innerHTML.includes('QUOTE'),'watchlist change clears quote-only previous prices');
+console.log('Price-only error response, retained stale last quote and mobile labels checked.');

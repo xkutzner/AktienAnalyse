@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {estimateFeatures,fitTraining,featureDistance,trainingThreshold} from '../worker/analogues.js';
+import {estimateFeatures,fitTraining,featureDistance,trainingThreshold,priceResearch} from '../worker/analogues.js';
 const keys=['r20','r60','rel20','trend50','vol20'];
 const records=Array.from({length:70},(_,i)=>({index:80+i*20,features:{r20:.04*Math.sin(i*.4),r60:.07*Math.sin(i*.4)+.01*Math.cos(i),rel20:.03*Math.sin(i*.7),trend50:.03*Math.cos(i*.3),vol20:.3+.05*Math.cos(i*.8)},proxyReturn:.02*Math.sin(i)+.01,netReturn:.02*Math.sin(i)+.008,labelVersion:'execution-label-v1',executionVersion:'execution-v4',netVerified:true,pointInTimeVerified:true,knownAtIndex:100+i*20,marketUp:true}));
 const query={r20:0,r60:0,rel20:0,trend50:0,vol20:.3};
@@ -23,4 +23,37 @@ new Function('stocks','el','pct','safe',view+';renderAnalogComparison();')(stock
 for(const label of ['Alte Referenz','Netto-Schätzung','Median','Verlusthäufigkeit','effektiv','Ähnlichkeit','Ergebnisbereich','Mittelwert-Unsicherheit','keine Nettoerträge'])assert.ok(target.innerHTML.includes(label),label);
 assert.ok(target.innerHTML.includes('historische Datenstände fehlen'));
 console.log('Comparison surface checked: old/new, quality, net qualification, outcome range and separate mean uncertainty.');
-
+// Explicit fixed holding outcomes differ by horizon and never read proxy strategy outcomes.
+const priceBars=Array.from({length:2001},(_,i)=>({close:100+i/10}));
+const priceQuery={...query,score:60};
+const priceResult=priceResearch(priceQuery,records,2000,priceBars,{marketUp:true,asOf:'2026-10-02'});
+assert.equal(priceResult.rating.status,'provisional');assert.equal(priceResult.rating.investmentQualified,false);
+assert.equal(priceResult.price.value,300);assert.equal(priceResult.price.rawVerified,false);
+assert.deepEqual(priceResult.horizons.map(row=>row.horizon),[1,5,10,20]);
+assert.ok(priceResult.horizons.every(row=>row.status==='exploratory'));
+for(const row of priceResult.horizons){
+ const expected=estimateFeatures(query,records.map(record=>({...record,proxyReturn:priceBars[record.index+row.horizon].close/priceBars[record.index].close-1})),2000,{basis:'proxy',marketUp:true});
+ assert.equal(row.meanReturn,expected.metrics.expectedReturn);assert.equal(row.meanPrice,300*(1+row.meanReturn));
+}
+assert.ok(priceResult.horizons[3].meanPrice>priceResult.horizons[0].meanPrice);
+assert.deepEqual(priceResearch(priceQuery,records.map(row=>({...row,proxyReturn:100,netReturn:-1})),2000,priceBars,{marketUp:true,asOf:'2026-10-02'}),priceResult,'strategy proxy cannot enter price scenarios');
+assert.deepEqual(priceResearch(priceQuery,[...records,future],2000,priceBars,{marketUp:true,asOf:'2026-10-02'}),priceResult,'future observations excluded');
+const missing=priceResearch({...priceQuery,r20:NaN},records,2000,priceBars);
+assert.equal(missing.rating.status,'unknown');assert.equal(missing.indicatorAudit.find(row=>row.key==='r20').included,false);assert.ok(missing.horizons.every(row=>row.meanPrice===null));
+const broken=priceBars.map(row=>({...row}));broken[2000].close=Infinity;
+assert.equal(priceResearch(priceQuery,records,2000,broken).price.value,null);
+assert.ok(priceResearch(priceQuery,records,2000,broken).horizons.every(row=>row.meanPrice===null));
+assert.equal(priceResearch(priceQuery,records.slice(0,5),2000,priceBars).rating.status,'provisional','short analogue history retains available feature rating');
+assert.ok(priceResearch(priceQuery,records.slice(0,5),2000,priceBars).horizons.every(row=>row.meanPrice===null));
+const changed=priceBars.map(row=>({...row}));
+for(const record of records)changed[record.index+1].close*=1.01;
+const changedResult=priceResearch(priceQuery,records,2000,changed,{marketUp:true,asOf:'2026-10-02'});
+assert.notEqual(changedResult.horizons[0].meanPrice,priceResult.horizons[0].meanPrice);
+assert.deepEqual(changedResult.horizons.slice(1),priceResult.horizons.slice(1),'1-session outcomes never scale the other horizons');
+const hole=priceBars.map(row=>({...row}));
+for(const record of records)hole[record.index+3]=null;
+const holesResult=priceResearch(priceQuery,records,2000,hole,{marketUp:true,asOf:'2026-10-02'});
+assert.equal(holesResult.horizons[0].status,'exploratory');
+assert.ok(holesResult.horizons.slice(1).every(row=>row.meanPrice===null),'missing intermediate session is not compressed or imputed');
+assert.deepEqual(priceResearch(priceQuery,records,2000,[...priceBars,{close:Infinity}],{marketUp:true,asOf:'2026-10-02'}),priceResult,'prices after decision cannot change scenarios');
+console.log('Price research checks passed: independent fixed horizons, strategy separation, finite data audit, maturity, missing values and provisional rating.');

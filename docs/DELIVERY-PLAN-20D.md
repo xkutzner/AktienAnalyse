@@ -1,5 +1,9 @@
 # Lieferplan und Abnahmebuch: Aktienanalyse für 20 Handelstage
 
+## Nutzerpriorität 06.10.2026: vorläufige Bewertung, Preis und vier Horizonte
+
+Neuer Einzelauftrag nach der Startreparatur: pro Aktie eine vorläufige Bewertung aus tatsächlich verfügbaren Merkmalen sowie letzter verfügbarer Schlusskurs und experimentelle Brutto-Kursszenarien für 1/5/10/20 folgende Handelssitzungen. Daten neuer Indikatoren zuerst einzeln prüfen; fehlende Zusatzdaten nicht in die Bewertung aufnehmen. Keine weitere Indikatorintegration und keine Site-Veröffentlichung in diesem Paket. [Paketprotokoll](delivery/PRICE-RESEARCH.md). Die folgenden älteren Auftragsprioritäten sind historische Nachweise.
+
 ## Priorität 06.10.2026: Startreparatur und Einzelabnahme
 
 Der Nutzer meldet eine eingefrorene Site und verlangt künftig einzelne Featuretests vor Kombination. Zuerst technischen Start reparieren; keine weiteren V-Pakete in diesem Auftrag. Details und nächste Einzelabnahmen: [STARTUP-UND-EINZELABNAHME.md](delivery/STARTUP-UND-EINZELABNAHME.md). Bereits implementierte Pakete bleiben vorhanden; ihr technischer Stand ist keine echte Produkt-/Prognoseabnahme.

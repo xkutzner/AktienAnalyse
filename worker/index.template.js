@@ -6,7 +6,7 @@ const SOURCE_COMMIT=__SOURCE_COMMIT__;
 import {ANALYSIS_CONTRACT, scenarioCapital, analysisContext, analysisCardPolicy, candidateStatus, watchlistStatus, simulationReturnMetrics} from "./contract.js";
 import {riskAt, RISK_VERSION, createTradePlan, createEventWindow, lastCompleted,  loadPrices, providerData, normalizeActions, session, validatePricePrefix, adaptRawSnapshot, validatePrices, DATA_VERSION } from "./data.js";
 import {simulateTrade, executionLabel, DEFAULT_COSTS, SIMULATION_VERSION, validateCosts, BROKER_PROFILES} from "./simulation.js";
-import {estimateFeatures, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
+import {estimateFeatures, priceResearch, ANALOGUE_VERSION, ANALOGUE_PARAMETERS} from "./analogues.js";
 const page = __APP_PAGE_HTML__;
 const HORIZON = 20;
 const TARGET = 0.05;
@@ -98,6 +98,7 @@ const worker = {
         const quality=Array.isArray(saved.payload?.values)?validatePrices(saved.payload,'all',new Date(item.normalizationAt)):null;
         const error=saved.error?{symbol:item.symbol,message:saved.error}:!quality?{symbol:item.symbol,message:'Keine Kursreihe'}:!quality.usable?{symbol:item.symbol,message:quality.issues.join(' · ')||'Datenstand unbekannt'}:null;
         const row={symbol:item.symbol,normalizationAt:item.normalizationAt,snapshotId:item.snapshotId,archived:true,provenance:saved.provenance,...(quality?{bars:quality.bars,pricePayload:saved.payload,quality,currency:saved.payload.meta?.currency}:{}),...(error?{error}:{} )};
+        if(item.rawQuote)row.rawQuote=item.rawQuote;
         downloads.push(row);
        }
        const response=record.input.kind==='simulation'?await worker.fetch(new Request('https://archive.local/api/simulation',{method:'POST',body:JSON.stringify(record.input.request),headers:{'content-type':'application/json'}}),env,undefined,{normalizationAt:record.input.normalizationAt}):await getResearch(new URL('https://archive.local/api/stocks'+record.input.query),{},downloads);
@@ -207,8 +208,15 @@ async function getResearch(url, env, replayDownloads=null) {
   let context;
   try{context=analysisContext(url.searchParams.has('capital')?Number(url.searchParams.get('capital')):undefined,DEFAULT_COSTS)}catch(error){return json({message:error.message},400)}
   const requested = [...symbols, "SPY"];
-  const downloads = replayDownloads || await Promise.all(requested.map((symbol) => fetchHistory(symbol, env)));
-  const finish=async (output,status=200)=>{const result={...output,dataCapabilities:dataCapabilities(downloads)};return json(replayDownloads?result:await saveAnalysis(result,url,downloads,env,SOURCE_COMMIT),status,{"cache-control":"no-store"});};
+  const downloads = replayDownloads || await Promise.all(requested.map(async symbol=>{
+    if(symbol==='SPY')return fetchHistory(symbol,env);
+    const [history,record]=await Promise.all([fetchHistory(symbol,env),providerData('time_series',{symbol,interval:'1day',outputsize:2,adjust:'none'},env)]);
+    const normalizedAt=new Date().toISOString(),quality=Array.isArray(record.payload?.values)?validatePrices(record.payload,'none',new Date(normalizedAt)):null;
+    const bar=quality?.bars?.at(-1);
+    const usable=quality?.usable===true&&bar?.date===quality.expectedLastSession;
+    return {...history,rawQuote:{value:usable?bar.close:null,sessionDate:usable?bar.date:null,currency:'USD',basis:'raw-close',live:false,rawVerified:usable,reason:usable?null:record.error||quality?.issues?.join(' · ')||'Rohschluss nicht verfügbar',snapshotId:record.snapshotId,archived:record.archived,provenance:record.provenance,normalizedAt}};
+  }));
+  const finish=async (output,status=200)=>{const availablePrices=downloads.filter(item=>symbols.includes(item.symbol)).map(item=>{const raw=item.rawQuote,bar=item.bars?.at(-1);return {symbol:item.symbol,value:raw?.rawVerified?raw.value:bar?.close??null,sessionDate:raw?.rawVerified?raw.sessionDate:bar?.date??null,basis:raw?.rawVerified?'raw-close':'provider-adjusted-close',currency:'USD',rawVerified:raw?.rawVerified===true,qualityUsable:item.quality?.usable===true,reason:item.error?.message||item.quality?.issues?.join(' · ')||'Bewertungsdaten fehlen',retrievedAt:raw?.rawVerified?raw.provenance?.retrievedAt:item.provenance?.retrievedAt};});const result={...output,availablePrices,dataCapabilities:dataCapabilities(downloads)};return json(replayDownloads?result:await saveAnalysis(result,url,downloads,env,SOURCE_COMMIT),status,{"cache-control":"no-store"});};
   const bySymbol = Object.fromEntries(downloads.filter((item) => item.bars).map((item) => [item.symbol, item]));
   const errors = downloads.filter((item) => item.error).map((item) => item.error);
   const backtest = historicalBacktest(downloads, symbols);
@@ -246,8 +254,15 @@ async function getResearch(url, env, replayDownloads=null) {
     for(let index=80;index+20<stock.bars.length;index+=20){const features=featureAt(stock.bars,marketBars,index),outcome=simulateTarget(stock.bars,index);if(features&&outcome)featureRecords.push({index,features,marketUp:marketFeatures[index]?.r20>=0,proxyReturn:outcome.tradeReturn,...executionLabel(null,index,null,{priceBasis:'adjusted'})});}
     const options={marketUp:marketFeatures[currentIndex]?.r20>=0};
     const newAnalogs={proxy:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'proxy'}),net:estimateFeatures(stock.current,featureRecords,currentIndex,{...options,basis:'net'})};
+    const researchRecords=[];
+    for(let index=80;index+20<=currentIndex;index+=20){const features=featureAt(stock.bars,marketBars,index);if(features)researchRecords.push({index,features,marketUp:marketFeatures[index]?.r20>=0});}
+    const provisionalResearch=priceResearch(stock.current,researchRecords,currentIndex,stock.bars,{...options,asOf:dates[currentIndex],retrievedAt:bySymbol[stock.symbol]?.provenance?.retrievedAt||null});
+    const quote=bySymbol[stock.symbol]?.rawQuote;
+    provisionalResearch.scenarioAnchor={...provisionalResearch.price};
+    if(quote?.rawVerified===true&&quote.sessionDate===dates[currentIndex])provisionalResearch.price={...quote,retrievedAt:quote.provenance?.retrievedAt||null};
+    else provisionalResearch.rawQuoteStatus={status:'unknown',reason:quote?.reason||'Rohkurs nicht verfügbar'};
     return { ...stock.current, symbol: stock.symbol, close: stock.bars[currentIndex]?.close,
-      risk: riskAt(stock.bars,currentIndex,{priceBasis:'adjusted',volumeBasis:'unknown',mic:stock.mic}), asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, analysisStatus:candidateStatus(forecast),resultType:'historical',expectedNetReturn:null,returnMetrics:{historicalStrategyMean:forecast.expectedReturn,stockAt20:null,strategyNet:null,capitalWindowNet:null}, historyBars: stock.bars.filter(Boolean).length };
+      provisionalResearch, risk: riskAt(stock.bars,currentIndex,{priceBasis:'adjusted',volumeBasis:'unknown',mic:stock.mic}), asOf: dates[currentIndex], qualityUsable:stock.qualityUsable, newAnalogs, ...forecast, analysisStatus:candidateStatus(forecast),resultType:'historical',expectedNetReturn:null,returnMetrics:{historicalStrategyMean:forecast.expectedReturn,stockAt20:null,strategyNet:null,capitalWindowNet:null}, historyBars: stock.bars.filter(Boolean).length };
   });
   currentForecasts.forEach(stock=>{stock.rawTradePlan={status:'unknown',reason:'Adjusted Research ohne qualifizierte Rohpreise/PIT-Maßnahmen'};stock.analysisCard=analysisCardPolicy(stock)});
   currentForecasts.sort((a, b) =>
@@ -505,5 +520,3 @@ async function calendar(url,env){
  const risks=symbols.map(symbol=>{const relevant=events.filter(e=>!e.symbol||e.symbol===symbol),points=Math.min(100,relevant.reduce((n,e)=>n+e.points,0));return{symbol,score:complete?points:null,knownPoints:points,label:complete?(points>=60?'Hoch':points>=30?'Erhöht':'Niedrig'):'Unbekannt / unvollständig'};});
  return json({version:EVENT_VERSION,calendarVersion:MACRO_SNAPSHOT_VERSION,mode,requestedAt,displayAsOf:asOf,archiveStatus,macroSnapshotIds:snapshotIds,start,end,checkedAt,window,events,sources,risks,coverage:{earnings:'unknown',capitalActions:'unknown',macro:'partial-observations'},thresholdStatus:'experimental-until-package12',registryIds:ids},200,{'cache-control':'no-store'});
 }
-
-
